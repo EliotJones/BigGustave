@@ -4,7 +4,7 @@
 
     internal static class Decoder
     {
-        public static void Decode(byte[] decompressedData, ImageHeader header)
+        public static IPixel[,] Decode(byte[] decompressedData, ImageHeader header)
         {
             var bytesPerPixel = BytesPerPixel(header, out var samplesPerPixel);
 
@@ -26,7 +26,7 @@
                             {
                                 var currentByteAbsolute = currentRowStartByteAbsolute + rowByteIndex;
 
-                                ReverseFilter(decompressedData, filterType, previousRowStartByteAbsolute, currentRowStartByteAbsolute, currentByteAbsolute, rowByteIndex, bytesPerPixel, header);
+                                ReverseFilter(decompressedData, filterType, previousRowStartByteAbsolute, currentRowStartByteAbsolute, currentByteAbsolute, rowByteIndex, bytesPerPixel);
                             }
                         }
 
@@ -36,13 +36,23 @@
                             for (var col = 0; col < header.Width; col++)
                             {
                                 var currentByteAbsolute = currentRowStartByteAbsolute + (col * bytesPerPixel);
-                                if (bytesPerPixel == 4)
+
+                                switch (bytesPerPixel)
                                 {
-                                    var r = decompressedData[currentByteAbsolute + 0];
-                                    var g = decompressedData[currentByteAbsolute + 1];
-                                    var b = decompressedData[currentByteAbsolute + 2];
-                                    var a = decompressedData[currentByteAbsolute + 3];
-                                    pixels[row, col] = new RgbaPixel(r, g, b, a);
+                                    case 1:
+                                        {
+                                            pixels[row, col] = new GrayscalePixel(decompressedData[currentByteAbsolute]);
+                                            break;
+                                        }
+                                    case 4:
+                                        {
+                                            var r = decompressedData[currentByteAbsolute];
+                                            var g = decompressedData[currentByteAbsolute + 1];
+                                            var b = decompressedData[currentByteAbsolute + 2];
+                                            var a = decompressedData[currentByteAbsolute + 3];
+                                            pixels[row, col] = new RgbaPixel(r, g, b, a);
+                                            break;
+                                        }
                                 }
                             }
                         }
@@ -50,11 +60,11 @@
                     }
                 case InterlaceMethod.Adam7:
                     {
-                        throw new NotSupportedException();
-                        break;
+                        throw new NotImplementedException("Adam7 interlacing not yet implemented.");
                     }
             }
 
+            return pixels;
         }
 
         private static byte BytesPerPixel(ImageHeader header, out byte samplesPerPixel)
@@ -105,7 +115,7 @@
             }
         }
 
-        private static void ReverseFilter(byte[] data, FilterType type, int previousRowStartByteAbsolute, int rowStartByteAbsolute, int byteAbsolute, int rowByteIndex, int bytesPerPixel, ImageHeader header)
+        private static void ReverseFilter(byte[] data, FilterType type, int previousRowStartByteAbsolute, int rowStartByteAbsolute, int byteAbsolute, int rowByteIndex, int bytesPerPixel)
         {
             byte GetLeftByteValue()
             {

@@ -7,7 +7,7 @@
 
     public class Png
     {
-        public static void Open(Stream stream, IChunkVisitor chunkVisitor = null)
+        public static IPixel[,] Open(Stream stream, IChunkVisitor chunkVisitor = null)
         {
             if (stream == null)
             {
@@ -88,7 +88,9 @@
 
                 var bytesOut = output.ToArray();
 
-                Decoder.Decode(bytesOut, imageHeader);
+                var pixels = Decoder.Decode(bytesOut, imageHeader);
+
+                return pixels;
             }
         }
 
