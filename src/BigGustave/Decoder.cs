@@ -19,6 +19,17 @@
             { 7, new[] { 1, 3, 5, 7 } }
         };
 
+        private static readonly IReadOnlyDictionary<int, int[]> PassToScanlineColumnIndex = new Dictionary<int, int[]>
+        {
+            { 1, new []{ 0 } },
+            { 2, new []{ 4 } },
+            { 3, new []{ 0, 4 } },
+            { 4, new []{ 2, 6 } },
+            { 5, new []{ 0, 2, 4, 6 } },
+            { 6, new []{ 1, 3, 5, 7 } },
+            { 7, new []{ 0, 1, 2, 3, 4, 5, 6, 7, 8 } }
+        };
+
         /*
          * To go from raw image data to interlaced:
          *
@@ -62,6 +73,31 @@
 
             return (indices.Length * (header.Height / 8)) + additionalLines;
         }
+
+        public static int GetPixelsPerScanlineInPass(ImageHeader header, int pass)
+        {
+            var indices = PassToScanlineColumnIndex[pass + 1];
+
+            var mod = header.Width % 8;
+
+            var fitsExactly = mod == 0;
+
+            if (fitsExactly)
+            {
+                return indices.Length * (header.Width / 8);
+            }
+
+            var additionalColumns = 0;
+            for (int i = 0; i < indices.Length; i++)
+            {
+                if (i < mod)
+                {
+                    additionalColumns++;
+                }
+            }
+
+            return (indices.Length * (header.Width / 8)) + additionalColumns;
+        }
     }
 
     internal static class Decoder
@@ -95,9 +131,21 @@
                 case InterlaceMethod.Adam7:
                     {
                         // 7 passes
-                        for (int i = 0; i < 7; i++)
+                        for (var pass = 0; pass < 7; pass++)
                         {
-                            
+                            var numberOfScanlines = Adam7.GetNumberOfScanlinesInPass(header, pass);
+                            var numberOfPixelsPerScanline = Adam7.GetPixelsPerScanlineInPass(header, pass);
+                            var numberOfBytesInLine = bytesPerPixel * numberOfPixelsPerScanline;
+
+                            if (numberOfScanlines <= 0 || numberOfPixelsPerScanline <= 0)
+                            {
+                                continue;
+                            }
+
+                            for (var scanlineIndex = 0; scanlineIndex < numberOfScanlines; scanlineIndex++)
+                            {
+                                
+                            }
                         }
                         throw new NotImplementedException("Adam7 interlacing not yet implemented.");
                     }
