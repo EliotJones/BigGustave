@@ -9,10 +9,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="images\10by10rgbaadam7.png" />
     <None Remove="images\4by4grayscale.png" />
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="images\10by10rgbaadam7.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="images\4by4grayscale.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

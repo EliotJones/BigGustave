@@ -39,15 +39,56 @@ namespace BigGustave.Tests
 
             using (var stream = File.OpenRead(path))
             {
-                var pixels = Png.Open(stream);
+                var img = Png.Open(stream);
 
-                for (var row = 0; row < pixels.GetLength(0); row++)
+                for (var row = 0; row < values.Count; row++)
                 {
-                    for (var col = 0; col < pixels.GetLength(1); col++)
-                    {
-                        var pixel = (GrayscalePixel)pixels[row, col];
+                    var expectedRow = values[row];
 
-                        Assert.Equal(values[row][col], pixel.Value);
+                    for (var col = 0; col < expectedRow.Length; col++)
+                    {
+                        var pixel = img.GetPixel(col, row);
+
+                        Assert.Equal(values[row][col], pixel.R);
+                        Assert.True(pixel.IsGrayscale);
+                    }
+                }
+
+                Assert.Equal(4, img.Width);
+                Assert.Equal(4 ,img.Height);
+                Assert.False(img.HasAlphaChannel);
+            }
+        }
+
+        [Fact]
+        public void TenByTenRgbAWithAdam7()
+        {
+            var values = new List<byte[]>
+            {
+                new byte[] {176, 255, 255, 176},
+                new byte[] {255, 0, 0, 255},
+                new byte[] {133, 255, 255, 133},
+                new byte[] {255, 176, 176, 255}
+            };
+
+            var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "images", "10by10rgbaadam7.png");
+
+            using (var stream = File.OpenRead(path))
+            {
+                var img = Png.Open(stream);
+
+                Assert.Equal(10, img.Width);
+                Assert.Equal(10, img.Height);
+
+                Assert.True(img.HasAlphaChannel);
+
+                for (var row = 0; row < values.Count; row++)
+                {
+                    var expectedRow = values[row];
+
+                    for (var col = 0; col < expectedRow.Length; col++)
+                    {
+                        var pixel = img.GetPixel(col, row);
                     }
                 }
             }

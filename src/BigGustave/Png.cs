@@ -5,9 +5,93 @@
     using System.IO.Compression;
     using System.Text;
 
+    internal class RawPngData
+    {
+        private readonly byte[] data;
+        private readonly int bytesPerPixel;
+        private readonly int width;
+
+        public RawPngData(byte[] data, int bytesPerPixel, int width)
+        {
+            this.data = data;
+            this.bytesPerPixel = bytesPerPixel;
+            this.width = width;
+        }
+
+        public Pixel GetPixel(int x, int y)
+        {
+            var rowStartPixel = (1 + y) + (bytesPerPixel * width * y);
+
+            var pixelStartIndex = rowStartPixel + (bytesPerPixel * x);
+
+            var first = data[pixelStartIndex];
+
+            switch (bytesPerPixel)
+            {
+                case 1:
+                    return new Pixel(first, first, first, 0, true);
+                case 2:
+                    return new Pixel(first, first, first, data[pixelStartIndex + 1], true);
+                case 3:
+                    return new Pixel(first, data[pixelStartIndex + 1], data[pixelStartIndex + 2], 0, false);
+                case 4:
+                    return new Pixel(first, data[pixelStartIndex + 1], data[pixelStartIndex + 2], data[pixelStartIndex + 3], false);
+                default:
+                    throw new InvalidOperationException($"Unreconized number of bytes per pixel: {bytesPerPixel}.");
+            }
+        }
+    }
+
     public class Png
     {
-        public static IPixel[,] Open(Stream stream, IChunkVisitor chunkVisitor = null)
+        private readonly RawPngData data;
+
+        public ImageHeader Header { get; }
+
+        public int Width => Header.Width;
+
+        public int Height => Header.Height;
+
+        public bool HasAlphaChannel => (Header.ColorType & ColorType.AlphaChannelUsed) != 0;
+
+        internal Png(ImageHeader header, RawPngData data)
+        {
+            Header = header;
+            this.data = data ?? throw new ArgumentNullException(nameof(data));
+        }
+
+        public Pixel GetPixel(int x, int y) => data.GetPixel(x, y);
+
+        public static Png Open(Stream stream, IChunkVisitor chunkVisitor = null)
+            => PngOpener.Open(stream, chunkVisitor);
+    }
+
+
+    public readonly struct Pixel
+    {
+        public byte R { get; }
+
+        public byte G { get; }
+
+        public byte B { get; }
+
+        public byte A { get; }
+
+        public bool IsGrayscale { get; }
+
+        public Pixel(byte r, byte g, byte b, byte a, bool isGrayscale)
+        {
+            R = r;
+            G = g;
+            B = b;
+            A = a;
+            IsGrayscale = isGrayscale;
+        }
+    }
+
+    internal static class PngOpener
+    {
+        public static Png Open(Stream stream, IChunkVisitor chunkVisitor = null)
         {
             if (stream == null)
             {
@@ -25,7 +109,7 @@
             {
                 throw new ArgumentException($"The provided stream did not start with the PNG header. Got {validHeader}.");
             }
-            
+
             var crc = new byte[4];
             var imageHeader = ReadImageHeader(stream, crc);
 
@@ -88,9 +172,9 @@
 
                 var bytesOut = output.ToArray();
 
-                var pixels = Decoder.Decode(bytesOut, imageHeader);
+                var bytesPerPixel = Decoder.Decode(bytesOut, imageHeader);
 
-                return pixels;
+                return new Png(imageHeader, new RawPngData(bytesOut, bytesPerPixel, imageHeader.Width));
             }
         }
 
@@ -158,8 +242,8 @@
             var filterMethod = ihdrBytes[11];
             var interlaceMethod = ihdrBytes[12];
 
-            return new ImageHeader(width, height, bitDepth, (ColorType) colorType, (CompressionMethod) compressionMethod, (FilterMethod) filterMethod,
-                (InterlaceMethod) interlaceMethod);
+            return new ImageHeader(width, height, bitDepth, (ColorType)colorType, (CompressionMethod)compressionMethod, (FilterMethod)filterMethod,
+                (InterlaceMethod)interlaceMethod);
         }
     }
 }
