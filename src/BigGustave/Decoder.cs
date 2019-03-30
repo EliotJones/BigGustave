@@ -27,7 +27,7 @@
             { 4, new []{ 2, 6 } },
             { 5, new []{ 0, 2, 4, 6 } },
             { 6, new []{ 1, 3, 5, 7 } },
-            { 7, new []{ 0, 1, 2, 3, 4, 5, 6, 7, 8 } }
+            { 7, new []{ 0, 1, 2, 3, 4, 5, 6, 7 } }
         };
 
         /*
@@ -65,7 +65,7 @@
             var additionalLines = 0;
             for (var i = 0; i < indices.Length; i++)
             {
-                if (i < mod)
+                if (indices[i] < mod)
                 {
                     additionalLines++;
                 }
@@ -90,7 +90,7 @@
             var additionalColumns = 0;
             for (int i = 0; i < indices.Length; i++)
             {
-                if (i < mod)
+                if (indices[i] < mod)
                 {
                     additionalColumns++;
                 }
@@ -130,6 +130,8 @@
                     }
                 case InterlaceMethod.Adam7:
                     {
+                        var i = 0;
+                        var previousStartRowByteAbsolute = -1;
                         // 7 passes
                         for (var pass = 0; pass < 7; pass++)
                         {
@@ -144,10 +146,20 @@
 
                             for (var scanlineIndex = 0; scanlineIndex < numberOfScanlines; scanlineIndex++)
                             {
-                                
+                                var filterType = (FilterType)decompressedData[i++];
+                                var rowStartByte = i;
+
+                                for (var j = 0; j < numberOfBytesInLine; j++)
+                                {
+                                    ReverseFilter(decompressedData, filterType, previousStartRowByteAbsolute, rowStartByte, i, j, bytesPerPixel);
+                                    i++;
+                                }
+
+                                previousStartRowByteAbsolute = rowStartByte;
                             }
                         }
-                        throw new NotImplementedException("Adam7 interlacing not yet implemented.");
+
+                        break;
                     }
             }
 
