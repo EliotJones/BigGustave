@@ -4,10 +4,17 @@
 
     internal static class Decoder
     {
-        public static byte Decode(byte[] decompressedData, ImageHeader header)
+        public static (byte bytesPerPixel, byte samplesPerPixel) GetBytesAndSamplesPerPixel(ImageHeader header)
         {
-            var bytesPerPixel = BytesPerPixel(header, out var samplesPerPixel);
+            var bitDepthCorrected = (header.BitDepth + 7) / 8;
 
+            var samplesPerPixel = SamplesPerPixel(header);
+
+            return ((byte)(samplesPerPixel * bitDepthCorrected), samplesPerPixel);
+        }
+
+        public static byte[] Decode(byte[] decompressedData, ImageHeader header, byte bytesPerPixel, byte samplesPerPixel)
+        {
             switch (header.InterlaceMethod)
             {
                 case InterlaceMethod.None:
@@ -28,11 +35,13 @@
                                 ReverseFilter(decompressedData, filterType, previousRowStartByteAbsolute, currentRowStartByteAbsolute, currentByteAbsolute, rowByteIndex, bytesPerPixel);
                             }
                         }
-                        break;
+
+                        return decompressedData;
                     }
                 case InterlaceMethod.Adam7:
-                {
-                    var newBytes = new byte[header.Height * (header.Width * bytesPerPixel)];
+                    {
+                        var pixelsPerRow = header.Width * bytesPerPixel;
+                        var newBytes = new byte[header.Height * pixelsPerRow];
                         var i = 0;
                         var previousStartRowByteAbsolute = -1;
                         // 7 passes
@@ -56,32 +65,26 @@
                                     var pixelIndex = Adam7.GetPixelIndexForScanlineInPass(header, pass, scanlineIndex, j);
                                     for (var k = 0; k < bytesPerPixel; k++)
                                     {
-                                        var byteLineNumber = (j * k) + k;
+                                        var byteLineNumber = (j * bytesPerPixel) + k;
                                         ReverseFilter(decompressedData, filterType, previousStartRowByteAbsolute, rowStartByte, i, byteLineNumber, bytesPerPixel);
                                         i++;
                                     }
+
+                                    var start = pixelsPerRow * pixelIndex.y + pixelIndex.x * bytesPerPixel;
+                                    Array.ConstrainedCopy(decompressedData, rowStartByte + j * bytesPerPixel, newBytes, start, bytesPerPixel);
                                 }
 
                                 previousStartRowByteAbsolute = rowStartByte;
                             }
                         }
 
-                        break;
+                        return newBytes;
                     }
+                default:
+                    throw new ArgumentOutOfRangeException($"Invalid interlace method: {header.InterlaceMethod}.");
             }
-
-            return bytesPerPixel;
         }
-
-        private static byte BytesPerPixel(ImageHeader header, out byte samplesPerPixel)
-        {
-            var bitDepthCorrected = (header.BitDepth + 7) / 8;
-
-            samplesPerPixel = SamplesPerPixel(header);
-
-            return (byte)(samplesPerPixel * bitDepthCorrected);
-        }
-
+        
         private static byte SamplesPerPixel(ImageHeader header)
         {
             switch (header.ColorType)
