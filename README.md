@@ -2,7 +2,7 @@
 
 [![Build status](https://ci.appveyor.com/api/projects/status/nh12x7vg36qxunp0?svg=true)](https://ci.appveyor.com/project/EliotJones/biggustave)
 
-An attempt at PNG decoding according to the PNG spec only using .NET standard libraries.
+An attempt at PNG decoding according to the PNG spec using .NET standard libraries only.
 
 ## Usage ##
 
