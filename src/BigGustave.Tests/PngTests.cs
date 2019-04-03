@@ -93,6 +93,54 @@ namespace BigGustave.Tests
             }
         }
 
+        [Fact]
+        public void TwelveBySevenRgbWithAdam7()
+        {
+            var green = P(0, 201, 52);
+            var yellowGreen = P(81, 184, 50);
+            var darkGreen = P(12, 140, 45);
+            var nostrilGreen = P(54, 71, 52);
+            var red = P(255, 37, 37);
+            var blue = P(37, 83, 255);
+            var white = P(255, 255, 255);
+            var black = P(0, 0, 0);
+
+            var values = new List<Pixel[]>
+            {
+                new [] { blue, blue, blue, blue, blue, blue, blue, blue, red, red, red, red },
+                new [] { blue, blue, blue, yellowGreen, green, green, blue, blue, red, red, red, red },
+                new [] { blue, blue, green, white, yellowGreen, white, green, blue, blue, blue, blue, blue },
+                new [] { blue, blue, green, black, green, black, green, green, blue, blue, blue, blue },
+                new [] { blue, blue, green, green, yellowGreen, green, yellowGreen, green, green, green, blue, blue },
+                new [] { blue, blue, darkGreen, darkGreen, darkGreen, green, green, nostrilGreen, green, nostrilGreen, blue, blue },
+                new [] { blue, blue, blue, blue, darkGreen, darkGreen, yellowGreen, green, green, green, blue, blue }
+            };
+
+            var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "images", "12by7rgbadam7.png");
+
+            using (var stream = File.OpenRead(path))
+            {
+                var img = Png.Open(stream);
+
+                Assert.Equal(12, img.Width);
+                Assert.Equal(7, img.Height);
+
+                Assert.False(img.HasAlphaChannel);
+
+                for (var row = 0; row < values.Count; row++)
+                {
+                    var expectedRow = values[row];
+
+                    for (var col = 0; col < expectedRow.Length; col++)
+                    {
+                        var pixel = img.GetPixel(col, row);
+
+                        Assert.True(pixel.Equals(expectedRow[col]), $"Expected {expectedRow[col]} but got {pixel}.");
+                    }
+                }
+            }
+        }
+
         private static Pixel P(byte r, byte g, byte b)
         {
             return new Pixel(r, g, b, 255, false);

@@ -43,11 +43,11 @@
             switch (bytesPerPixel)
             {
                 case 1:
-                    return new Pixel(first, first, first, 0, true);
+                    return new Pixel(first, first, first, 255, true);
                 case 2:
                     return new Pixel(first, first, first, data[pixelStartIndex + 1], true);
                 case 3:
-                    return new Pixel(first, data[pixelStartIndex + 1], data[pixelStartIndex + 2], 0, false);
+                    return new Pixel(first, data[pixelStartIndex + 1], data[pixelStartIndex + 2], 255, false);
                 case 4:
                     return new Pixel(first, data[pixelStartIndex + 1], data[pixelStartIndex + 2], data[pixelStartIndex + 3], false);
                 default:
