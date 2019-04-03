@@ -1,3 +1,4 @@
+// ReSharper disable ParameterOnlyUsedForPreconditionCheck.Local
 namespace BigGustave.Tests
 {
     using Xunit;
@@ -141,9 +142,72 @@ namespace BigGustave.Tests
             }
         }
 
+        [Fact]
+        public void LargerImage()
+        {
+            CheckFile("piggies", 676, 573, true);
+        }
+
+        [Fact]
+        public void PdfPigLogo()
+        {
+            CheckFile("pdfpig", 294, 294, true);
+        }
+
+        [Fact]
+        public void FinnishOpinionPollGraph()
+        {
+            // https://commons.wikimedia.org/wiki/File:Finnish_Opinion_Polling,_30_Day_Moving_Average,_2015-2019.png
+            CheckFile("finnish-opinion-polling", 1181, 500, true);
+        }
+
+        private static void CheckFile(string imageName, int width, int height, bool hasAlpha)
+        {
+            var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "images", $"{imageName}.png");
+
+            using (var stream = File.OpenRead(path))
+            {
+                var img = Png.Open(stream);
+
+                Assert.Equal(width, img.Width);
+                Assert.Equal(height, img.Height);
+
+                Assert.Equal(hasAlpha, img.HasAlphaChannel);
+
+                var data = GetImageData(imageName);
+
+                foreach (var (x, y, pixel) in data)
+                {
+                    Assert.Equal(pixel, img.GetPixel(x, y));
+                }
+            }
+
+        }
+
+
         private static Pixel P(byte r, byte g, byte b)
         {
             return new Pixel(r, g, b, 255, false);
+        }
+
+        private static IEnumerable<(int x, int y, Pixel pixel)> GetImageData(string filename)
+        {
+            var file = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", $"{filename}.txt");
+            
+            foreach (var line in File.ReadLines(file))
+            {
+                var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+                var x = int.Parse(parts[0]);
+                var y = int.Parse(parts[1]);
+
+                var r = byte.Parse(parts[2]);
+                var g = byte.Parse(parts[3]);
+                var b = byte.Parse(parts[4]);
+                var a = byte.Parse(parts[5]);
+                
+                yield return (x, y, new Pixel(r, g, b, a, false));
+            }
         }
     }
 }
