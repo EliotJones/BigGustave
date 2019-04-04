@@ -31,6 +31,8 @@
 
             var hasEncounteredImageEnd = false;
 
+            Palette palette = null;
+
             using (var output = new MemoryStream())
             {
                 using (var memoryStream = new MemoryStream())
@@ -54,7 +56,13 @@
                             switch (header.Name)
                             {
                                 case "PLTE":
-                                    // TODO: read palette
+                                    if (header.Length % 3 != 0)
+                                    {
+                                        throw new InvalidOperationException($"Palette data must be multiple of 3, got {header.Length}.");
+                                    }
+
+                                    palette = new Palette(bytes);
+
                                     break;
                                 case "IDAT":
                                     memoryStream.Write(bytes, 0, bytes.Length);
@@ -92,7 +100,7 @@
 
                 bytesOut = Decoder.Decode(bytesOut, imageHeader, bytesPerPixel, samplesPerPixel);
 
-                return new Png(imageHeader, new RawPngData(bytesOut, bytesPerPixel, imageHeader.Width, imageHeader.InterlaceMethod));
+                return new Png(imageHeader, new RawPngData(bytesOut, bytesPerPixel, imageHeader.Width, imageHeader.InterlaceMethod, palette));
             }
         }
 
@@ -162,6 +170,23 @@
 
             return new ImageHeader(width, height, bitDepth, (ColorType)colorType, (CompressionMethod)compressionMethod, (FilterMethod)filterMethod,
                 (InterlaceMethod)interlaceMethod);
+        }
+    }
+
+    public class Palette
+    {
+        public byte[] Data { get; }
+
+        public Palette(byte[] data)
+        {
+            Data = data;
+        }
+
+        public Pixel GetPixel(int index)
+        {
+            var start = index * 3;
+
+            return new Pixel(Data[start], Data[start + 1], Data[start + 2], 255, false);
         }
     }
 }

@@ -161,6 +161,12 @@ namespace BigGustave.Tests
             CheckFile("finnish-opinion-polling", 1181, 500, true);
         }
 
+        [Fact]
+        public void TwoFiveSixByTwoFiveSixPalette()
+        {
+            CheckFile("256by2568bppwithplte", 256, 256, false);
+        }
+
         private static void CheckFile(string imageName, int width, int height, bool hasAlpha)
         {
             var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "images", $"{imageName}.png");
@@ -181,7 +187,6 @@ namespace BigGustave.Tests
                     Assert.Equal(pixel, img.GetPixel(x, y));
                 }
             }
-
         }
 
 
