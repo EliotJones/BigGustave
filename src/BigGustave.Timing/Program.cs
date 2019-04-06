@@ -9,7 +9,7 @@ namespace BigGustave.Timing
 
     public static class Program
     {
-        public static void Main(string[] args)
+        public static int Main(string[] args)
         {
 #if DEBUG
             throw new InvalidOperationException("Cannot run timings in debug mode.");
@@ -21,6 +21,8 @@ namespace BigGustave.Timing
             var file = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "test-file.png");
 
             var bytes = File.ReadAllBytes(file);
+
+            var result = 520;
 
             Console.WriteLine("Warmup.");
             using (var memoryStream = new MemoryStream(bytes))
@@ -61,6 +63,8 @@ namespace BigGustave.Timing
                 Console.WriteLine($"PNG average: {pngAverage} ticks");
                 Console.WriteLine($"Ref average: {referenceAverage} ticks");
                 Console.WriteLine($"Multiple: {average}");
+
+                result = (int)Math.Round(average * 100);
             }
 
             if (args.Length>0)
@@ -69,7 +73,7 @@ namespace BigGustave.Timing
                 Console.ReadKey();
             }
 
-            return;
+            return result;
         }
 
         private static List<long> GetPrimeFactors()
