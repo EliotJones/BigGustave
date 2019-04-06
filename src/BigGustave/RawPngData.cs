@@ -11,6 +11,7 @@
         private readonly int bytesPerPixel;
         private readonly int width;
         private readonly Palette palette;
+        private readonly ColorType colorType;
         private readonly int rowOffset;
 
         /// <summary>
@@ -20,8 +21,9 @@
         /// <param name="bytesPerPixel">The number of bytes in each pixel.</param>
         /// <param name="width">The width of the image in pixels.</param>
         /// <param name="interlaceMethod">The interlace method used.</param>
-        /// <param name="palette"></param>
-        public RawPngData(byte[] data, int bytesPerPixel, int width, InterlaceMethod interlaceMethod, Palette palette)
+        /// <param name="palette">The palette for images using indexed colors.</param>
+        /// <param name="colorType">The color type.</param>
+        public RawPngData(byte[] data, int bytesPerPixel, int width, InterlaceMethod interlaceMethod, Palette palette, ColorType colorType)
         {
             if (width < 0)
             {
@@ -32,6 +34,7 @@
             this.bytesPerPixel = bytesPerPixel;
             this.width = width;
             this.palette = palette;
+            this.colorType = colorType;
             rowOffset = interlaceMethod == InterlaceMethod.Adam7 ? 0 : 1;
         }
 
@@ -53,14 +56,48 @@
                 case 1:
                     return new Pixel(first, first, first, 255, true);
                 case 2:
-                    return new Pixel(first, first, first, data[pixelStartIndex + 1], true);
+                    switch (colorType)
+                    {
+                        case ColorType.None:
+                        {
+                            byte second = data[pixelStartIndex + 1];
+                            var value = ToSingleByte(first, second);
+                            return new Pixel(value, value, value, 255, true);
+
+                        }
+                        default:
+                            return new Pixel(first, first, first, data[pixelStartIndex + 1], true);
+                    }
+
                 case 3:
                     return new Pixel(first, data[pixelStartIndex + 1], data[pixelStartIndex + 2], 255, false);
                 case 4:
-                    return new Pixel(first, data[pixelStartIndex + 1], data[pixelStartIndex + 2], data[pixelStartIndex + 3], false);
+                    switch (colorType)
+                    {
+                        case ColorType.None | ColorType.AlphaChannelUsed:
+                        {
+                            var second = data[pixelStartIndex + 1];
+                            var firstAlpha = data[pixelStartIndex + 2];
+                            var secondAlpha = data[pixelStartIndex + 3];
+                            var gray = ToSingleByte(first, second);
+                            var alpha = ToSingleByte(firstAlpha, secondAlpha);
+                            return new Pixel(gray, gray, gray, alpha, true);
+                        }
+                        default:
+                            return new Pixel(first, data[pixelStartIndex + 1], data[pixelStartIndex + 2], data[pixelStartIndex + 3], false);
+                    }
+                case 6:
+                    return new Pixel(first, data[pixelStartIndex + 2], data[pixelStartIndex + 4], 255, false);
                 default:
                     throw new InvalidOperationException($"Unreconized number of bytes per pixel: {bytesPerPixel}.");
             }
+        }
+
+        private static byte ToSingleByte(byte first, byte second)
+        {
+            var us = (first << 8) + second;
+            var result = (byte)Math.Round((255 * us) / (double)ushort.MaxValue);
+            return result;
         }
     }
 }

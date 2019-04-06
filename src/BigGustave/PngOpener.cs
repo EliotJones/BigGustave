@@ -100,7 +100,7 @@
 
                 bytesOut = Decoder.Decode(bytesOut, imageHeader, bytesPerPixel, samplesPerPixel);
 
-                return new Png(imageHeader, new RawPngData(bytesOut, bytesPerPixel, imageHeader.Width, imageHeader.InterlaceMethod, palette));
+                return new Png(imageHeader, new RawPngData(bytesOut, bytesPerPixel, imageHeader.Width, imageHeader.InterlaceMethod, palette, imageHeader.ColorType));
             }
         }
 

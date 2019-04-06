@@ -167,7 +167,25 @@ namespace BigGustave.Tests
             CheckFile("256by2568bppwithplte", 256, 256, false);
         }
 
-        private static void CheckFile(string imageName, int width, int height, bool hasAlpha)
+        [Fact]
+        public void SevenTwentyByFiveSixtySixteenBitPerChannelRgb()
+        {
+            CheckFile("720by560spookycave", 720, 560, false);
+        }
+
+        [Fact]
+        public void SixteenBySixteenGrayAlphaSixteenBitPerChannel()
+        {
+            CheckFile("16by16graya16bit", 16, 16, true, true);
+        }
+
+        [Fact]
+        public void SixteenBySixteenGraySixteenBitPerChannel()
+        {
+            CheckFile("16by16gray16bit", 16, 16, false, true);
+        }
+
+        private static void CheckFile(string imageName, int width, int height, bool hasAlpha, bool grayscale = false)
         {
             var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "images", $"{imageName}.png");
 
@@ -180,7 +198,7 @@ namespace BigGustave.Tests
 
                 Assert.Equal(hasAlpha, img.HasAlphaChannel);
 
-                var data = GetImageData(imageName);
+                var data = GetImageData(imageName, grayscale);
 
                 foreach (var (x, y, pixel) in data)
                 {
@@ -188,14 +206,13 @@ namespace BigGustave.Tests
                 }
             }
         }
-
-
+        
         private static Pixel P(byte r, byte g, byte b)
         {
             return new Pixel(r, g, b, 255, false);
         }
 
-        private static IEnumerable<(int x, int y, Pixel pixel)> GetImageData(string filename)
+        private static IEnumerable<(int x, int y, Pixel pixel)> GetImageData(string filename, bool grayscale)
         {
             var file = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", $"{filename}.txt");
             
@@ -211,7 +228,7 @@ namespace BigGustave.Tests
                 var b = byte.Parse(parts[4]);
                 var a = byte.Parse(parts[5]);
                 
-                yield return (x, y, new Pixel(r, g, b, a, false));
+                yield return (x, y, new Pixel(r, g, b, a, grayscale));
             }
         }
     }
