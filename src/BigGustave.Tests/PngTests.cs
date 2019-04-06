@@ -185,6 +185,12 @@ namespace BigGustave.Tests
             CheckFile("16by16gray16bit", 16, 16, false, true);
         }
 
+        [Fact]
+        public void TwelveByTwentyFourRgbaSixteenBitPerChannel()
+        {
+            CheckFile("12by24rgba16bit", 12, 24, true);
+        }
+
         private static void CheckFile(string imageName, int width, int height, bool hasAlpha, bool grayscale = false)
         {
             var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "images", $"{imageName}.png");

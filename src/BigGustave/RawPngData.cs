@@ -88,6 +88,8 @@
                     }
                 case 6:
                     return new Pixel(first, data[pixelStartIndex + 2], data[pixelStartIndex + 4], 255, false);
+                case 8:
+                    return new Pixel(first, data[pixelStartIndex + 2], data[pixelStartIndex + 4], data[pixelStartIndex + 6], false);
                 default:
                     throw new InvalidOperationException($"Unreconized number of bytes per pixel: {bytesPerPixel}.");
             }
