@@ -21,19 +21,20 @@
                     {
                         var bytesPerScanline = BytesPerScanline(header, samplesPerPixel);
 
+                        var currentRowStartByteAbsolute = 1;
                         for (var rowIndex = 0; rowIndex < header.Height; rowIndex++)
                         {
-                            var filterType = (FilterType)decompressedData[rowIndex * bytesPerScanline + (1 * rowIndex)];
+                            var filterType = (FilterType)decompressedData[currentRowStartByteAbsolute - 1];
 
                             var previousRowStartByteAbsolute = (rowIndex) + (bytesPerScanline * (rowIndex - 1));
-                            var currentRowStartByteAbsolute = (rowIndex + 1) + (bytesPerScanline * rowIndex);
 
-                            for (var rowByteIndex = 0; rowByteIndex < bytesPerScanline; rowByteIndex++)
+                            var end = currentRowStartByteAbsolute + bytesPerScanline;
+                            for (var currentByteAbsolute = currentRowStartByteAbsolute; currentByteAbsolute < end; currentByteAbsolute++)
                             {
-                                var currentByteAbsolute = currentRowStartByteAbsolute + rowByteIndex;
-
-                                ReverseFilter(decompressedData, filterType, previousRowStartByteAbsolute, currentRowStartByteAbsolute, currentByteAbsolute, rowByteIndex, bytesPerPixel);
+                                ReverseFilter(decompressedData, filterType, previousRowStartByteAbsolute, currentRowStartByteAbsolute, currentByteAbsolute, currentByteAbsolute - currentRowStartByteAbsolute, bytesPerPixel);
                             }
+
+                            currentRowStartByteAbsolute += bytesPerScanline + 1;
                         }
 
                         return decompressedData;
@@ -145,16 +146,35 @@
                 return index < previousRowStartByteAbsolute || previousRowStartByteAbsolute < 0 ? (byte)0 : data[index];
             }
 
+            // Moved out of the switch for performance.
+            if (type == FilterType.Up)
+            {
+                var above = previousRowStartByteAbsolute + rowByteIndex;
+                if (above < 0)
+                {
+                    return;
+                }
+
+                data[byteAbsolute] += data[above];
+                return;
+            }
+            
+            if (type == FilterType.Sub)
+            {
+                var leftIndex = rowByteIndex - bytesPerPixel;
+                if (leftIndex < 0)
+                {
+                    return;
+                }
+
+                data[byteAbsolute] += data[rowStartByteAbsolute + leftIndex];
+                return;
+            }
+
             switch (type)
             {
                 case FilterType.None:
                     return;
-                case FilterType.Sub:
-                    data[byteAbsolute] += GetLeftByteValue();
-                    break;
-                case FilterType.Up:
-                    data[byteAbsolute] += GetAboveByteValue();
-                    break;
                 case FilterType.Average:
                     data[byteAbsolute] += (byte)((GetLeftByteValue() + GetAboveByteValue()) / 2);
                     break;
