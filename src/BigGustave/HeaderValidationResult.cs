@@ -2,7 +2,7 @@
 {
     internal readonly struct HeaderValidationResult
     {
-        private static readonly byte[] ExpectedHeader = {
+        public static readonly byte[] ExpectedHeader = {
             137,
             80,
             78,

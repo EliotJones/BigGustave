@@ -31,7 +31,7 @@
         }
 
         /// <summary>
-        /// Get the pixel at the given (x,y).
+        /// Get the pixel at the given column and row (x, y).
         /// </summary>
         /// <remarks>
         /// Pixel values are generated on demand from the underlying data to prevent holding many items in memory at once, so consumers

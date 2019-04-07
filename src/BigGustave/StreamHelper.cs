@@ -17,6 +17,14 @@
                                              + (bytes[2 + offset] << 8) + bytes[3 + offset];
         }
 
+        public static void WriteBigEndianInt32(Stream stream, int value)
+        {
+            stream.WriteByte((byte)(value >> 24));
+            stream.WriteByte((byte)(value >> 16));
+            stream.WriteByte((byte)(value >> 8));
+            stream.WriteByte((byte)value);
+        }
+
         private static byte ReadOrTerminate(Stream stream)
         {
             var b = stream.ReadByte();

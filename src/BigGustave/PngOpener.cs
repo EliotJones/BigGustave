@@ -81,6 +81,14 @@
                             throw new InvalidOperationException($"Did not read 4 bytes for the CRC, only found: {read}.");
                         }
 
+                        var result = (int)Crc32.Calculate(Encoding.ASCII.GetBytes(header.Name), bytes);
+                        var crcActual = (crc[0] << 24) + (crc[1] << 16) + (crc[2] << 8) + crc[3];
+
+                        if (result != crcActual)
+                        {
+                            throw new InvalidOperationException($"CRC calculated {result} did not match file {crcActual} for chunk: {header.Name}.");
+                        }
+
                         chunkVisitor?.Visit(stream, imageHeader, header, bytes, crc);
                     }
 
