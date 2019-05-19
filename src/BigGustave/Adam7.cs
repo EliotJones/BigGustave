@@ -1,6 +1,5 @@
 ﻿namespace BigGustave
 {
-    using System;
     using System.Collections.Generic;
 
     internal static class Adam7

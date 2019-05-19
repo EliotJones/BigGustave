@@ -34,5 +34,28 @@
                 Assert.Equal(red, bottomRight);
             }
         }
+
+        [Fact]
+        public void BiggerImage()
+        {
+            var builder = PngBuilder.Create(10, 10, false);
+
+            var green = new Pixel(0, 255, 25, 255, false);
+            var color1 = new Pixel(60, 201, 32, 255, false);
+            var color2 = new Pixel(100, 5, 250, 255, false);
+
+            builder.SetPixel(green, 1, 1).SetPixel(green, 2, 1).SetPixel(green, 3, 1).SetPixel(green, 4, 1).SetPixel(green, 5, 1);
+
+            builder.SetPixel(color1, 5, 7).SetPixel(color1, 5, 8)
+                .SetPixel(color1, 6, 7).SetPixel(color1, 6, 8)
+                .SetPixel(color1, 7, 7).SetPixel(color1, 7, 8);
+
+            builder.SetPixel(color2, 9, 9).SetPixel(color2, 8, 8);
+
+            using (var memoryStream = new MemoryStream())
+            {
+                builder.Save(memoryStream);
+            }
+        }
     }
 }

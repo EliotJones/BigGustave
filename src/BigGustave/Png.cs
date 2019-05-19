@@ -3,10 +3,16 @@
     using System;
     using System.IO;
 
+    /// <summary>
+    /// A PNG image. Call <see cref="Open(byte[],BigGustave.IChunkVisitor)"/> to open from file or bytes.
+    /// </summary>
     public class Png
     {
         private readonly RawPngData data;
 
+        /// <summary>
+        /// The header data from the PNG image.
+        /// </summary>
         public ImageHeader Header { get; }
 
         /// <summary>
@@ -47,8 +53,22 @@
         /// </summary>
         /// <param name="stream">The stream containing PNG data to be read.</param>
         /// <param name="chunkVisitor">Optional: A visitor which is called whenever a chunk is read by the library.</param>
-        /// <returns></returns>
+        /// <returns>The <see cref="Png"/> data from the stream.</returns>
         public static Png Open(Stream stream, IChunkVisitor chunkVisitor = null)
             => PngOpener.Open(stream, chunkVisitor);
+
+        /// <summary>
+        /// Read the PNG image from the bytes.
+        /// </summary>
+        /// <param name="bytes">The bytes of the PNG data to be read.</param>
+        /// <param name="chunkVisitor">Optional: A visitor which is called whenever a chunk is read by the library.</param>
+        /// <returns>The <see cref="Png"/> data from the bytes.</returns>
+        public static Png Open(byte[] bytes, IChunkVisitor chunkVisitor = null)
+        {
+            using (var memoryStream = new MemoryStream(bytes))
+            {
+                return PngOpener.Open(memoryStream, chunkVisitor);
+            }
+        }
     }
 }

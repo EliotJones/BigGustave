@@ -31,6 +31,9 @@ bld/
 [Tt]est[Rr]esult*/
 [Bb]uild[Ll]og.*
 
+# Doc comments xml
+src/BigGustave/BigGustave.xml
+
 # NUNIT
 *.VisualState.xml
 TestResult.xml

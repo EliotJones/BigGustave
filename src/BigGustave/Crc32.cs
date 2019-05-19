@@ -2,6 +2,9 @@
 {
     using System.Collections.Generic;
 
+    /// <summary>
+    /// 32-bit Cyclic Redundancy Code used by the PNG for checking the data is intact.
+    /// </summary>
     public static class Crc32
     {
         private const uint Polynomial = 0xEDB88320;
@@ -30,6 +33,9 @@
             }
         }
 
+        /// <summary>
+        /// Calculate the CRC32 for data.
+        /// </summary>
         public static uint Calculate(byte[] data)
         {
             var crc32 = uint.MaxValue;
@@ -42,6 +48,9 @@
             return crc32 ^ uint.MaxValue;
         }
 
+        /// <summary>
+        /// Calculate the CRC32 for data.
+        /// </summary>
         public static uint Calculate(List<byte> data)
         {
             var crc32 = uint.MaxValue;
@@ -54,6 +63,9 @@
             return crc32 ^ uint.MaxValue;
         }
 
+        /// <summary>
+        /// Calculate the combined CRC32 for data.
+        /// </summary>
         public static uint Calculate(byte[] data, byte[] data2)
         {
             var crc32 = uint.MaxValue;

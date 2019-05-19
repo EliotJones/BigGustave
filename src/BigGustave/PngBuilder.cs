@@ -4,6 +4,12 @@
     using System.IO.Compression;
     using System.Text;
 
+    /// <summary>
+    /// Used to construct PNG images. Call <see cref="Create"/> to make a new builder.
+    /// </summary>
+    /// <remarks>
+    /// The created image is not compliant with all image viewers due to ZLib compatibility issues.
+    /// </remarks>
     public class PngBuilder
     {
         private static readonly byte[] FakeDeflateHeader = { 120, 156 };
@@ -14,6 +20,9 @@
         private readonly int height;
         private readonly int bytesPerPixel;
 
+        /// <summary>
+        /// Create a builder for a PNG with the given width and size.
+        /// </summary>
         public static PngBuilder Create(int width, int height, bool hasAlphaChannel)
         {
             var bpp = hasAlphaChannel ? 4 : 3;
@@ -32,6 +41,9 @@
             this.bytesPerPixel = bytesPerPixel;
         }
 
+        /// <summary>
+        /// Set the pixel value for the given column (x) and row (y).
+        /// </summary>
         public PngBuilder SetPixel(Pixel pixel, int x, int y)
         {
             var start = (y * ((width * bytesPerPixel) + 1)) + 1 + (x * bytesPerPixel);
@@ -48,6 +60,21 @@
             return this;
         }
 
+        /// <summary>
+        /// Get the bytes of the PNG file for this builder.
+        /// </summary>
+        public byte[] Save()
+        {
+            using (var memoryStream = new MemoryStream())
+            {
+                Save(memoryStream);
+                return memoryStream.ToArray();
+            }
+        }
+
+        /// <summary>
+        /// Write the PNG file bytes to the provided stream.
+        /// </summary>
         public void Save(Stream outputStream)
         {
             outputStream.Write(HeaderValidationResult.ExpectedHeader, 0, HeaderValidationResult.ExpectedHeader.Length);

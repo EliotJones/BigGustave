@@ -3,6 +3,15 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>7.2</LangVersion>
+    <Description>Open, read and create PNG images.</Description>
+    <RepositoryUrl>https://github.com/EliotJones/BigGustave</RepositoryUrl>
+    <PackageIconUrl>https://raw.githubusercontent.com/UglyToad/DataTable/master/uglytoadsmall.png</PackageIconUrl>
+    <PackageLicenseUrl>https://github.com/EliotJones/BigGustave/blob/master/LICENSE</PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/EliotJones/BigGustave</PackageProjectUrl>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DocumentationFile>C:\git\csharp\BigGustave\src\BigGustave\BigGustave.xml</DocumentationFile>
   </PropertyGroup>
 
 </Project>

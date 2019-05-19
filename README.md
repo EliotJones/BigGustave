@@ -2,15 +2,29 @@
 
 [![Build status](https://ci.appveyor.com/api/projects/status/nh12x7vg36qxunp0?svg=true)](https://ci.appveyor.com/project/EliotJones/biggustave)
 
-An attempt at PNG decoding according to the PNG spec using .NET standard libraries only.
+Open, read and create PNG images in fully managed C#.
 
 ## Usage ##
 
-Still being written but the idea is calling:
+To open a PNG image from file and get some pixel values:
 
-    Png png = Png.Open(Stream stream)
+    using (var stream = File.OpenRead(@"C:\my\file\path\file.png"))
+    {
+        Png image = Png.Open(stream);
 
-Will return a PNG object.
+        Pixel pixel = image.GetPixel(image.Width - 1, image.Height - 1);
+
+        int pixelRedAverage = 0;
+
+        pixelRedAverage += pixel.R;
+
+        pixel = image.GetPixel(0, 0);
+
+        pixelRedAverage += pixel.R;
+
+        Console.WriteLine(pixelRedAverage / 2.0);       
+        
+    }
 
 The PNG object has methods to inspect the header and get the pixel values. The header has properties for:
 
@@ -36,3 +50,24 @@ To get a pixel use:
     Pixel pixel = png.GetPixel(0, 7);
 
 Where the first argument is x (column) and the second is y (row). The `Pixel` is used for all image types, e.g. Grayscale, Colour, with/without transparency.
+
+## Creation ##
+
+Because of some issues with ZLib compatibility the created images work with most, but not all image viewers. Of the viewers tested the images work with all browsers, Paint, Gimp, Paint3D etc.
+
+To create a PNG use:
+
+    var builder = PngBuilder.Create(2, 2, false);
+
+    var red = new Pixel(255, 0, 12, 255, false);
+    var black = new Pixel(0, 0, 0, 255, false);
+
+    builder.SetPixel(new Pixel(255, 0, 12, 255, false), 0, 0);
+    builder.SetPixel(new Pixel(255, 0, 12, 255, false), 1, 1);
+
+    using (var memory = new MemoryStream())
+    {
+        builder.Save(memory);
+        
+        return memory.ToArray();
+    }
