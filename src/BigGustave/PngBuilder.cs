@@ -120,31 +120,32 @@
             const int headerLength = 2;
             const int checksumLength = 4;
             using (var compressStream = new MemoryStream())
-            using (var compressor = new DeflateStream(compressStream, CompressionLevel.Fastest))
+            using (var compressor = new DeflateStream(compressStream, CompressionLevel.Fastest, true))
             {
                 compressor.Write(data, 0, data.Length);
                 compressor.Close();
 
-                var compressed = compressStream.ToArray();
+                compressStream.Seek(0, SeekOrigin.Begin);
 
-                var result = new byte[headerLength + compressed.Length + checksumLength];
+                var result = new byte[headerLength + compressStream.Length + checksumLength];
 
                 // Write the ZLib header.
                 result[0] = Deflate32KbWindow;
                 result[1] = ChecksumBits;
 
                 // Write the compressed data.
-                for (var i = 0; i < compressed.Length; i++)
+                int streamValue;
+                var i = 0;
+                while ((streamValue = compressStream.ReadByte()) != -1)
                 {
-                    var currentByte = compressed[i];
-
-                    result[i + headerLength] = currentByte;
+                    result[headerLength + i] = (byte) streamValue;
+                    i++;
                 }
-                
+
                 // Write Checksum of raw data.
                 var checksum = Adler32Checksum.Calculate(data);
 
-                var offset = headerLength + compressed.Length;
+                var offset = headerLength + compressStream.Length;
 
                 result[offset++] = (byte)(checksum >> 24);
                 result[offset++] = (byte)(checksum >> 16);

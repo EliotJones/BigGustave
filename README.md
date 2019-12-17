@@ -59,11 +59,10 @@ To create a PNG use:
 
     var builder = PngBuilder.Create(2, 2, false);
 
-    var red = new Pixel(255, 0, 12, 255, false);
-    var black = new Pixel(0, 0, 0, 255, false);
+    var red = new Pixel(255, 0, 0);
 
-    builder.SetPixel(new Pixel(255, 0, 12, 255, false), 0, 0);
-    builder.SetPixel(new Pixel(255, 0, 12, 255, false), 1, 1);
+    builder.SetPixel(red, 0, 0);
+    builder.SetPixel(255, 120, 16, 1, 1);
 
     using (var memory = new MemoryStream())
     {
