@@ -40,6 +40,11 @@
         }
 
         /// <summary>
+        /// Sets the RGB pixel value for the given column (x) and row (y).
+        /// </summary>
+        public PngBuilder SetPixel(byte r, byte g, byte b, int x, int y) => SetPixel(new Pixel(r, g, b), x, y);
+
+        /// <summary>
         /// Set the pixel value for the given column (x) and row (y).
         /// </summary>
         public PngBuilder SetPixel(Pixel pixel, int x, int y)
@@ -57,7 +62,7 @@
 
             return this;
         }
-
+        
         /// <summary>
         /// Get the bytes of the PNG file for this builder.
         /// </summary>

@@ -10,11 +10,11 @@
         {
             var builder = PngBuilder.Create(2, 2, false);
 
-            var red = new Pixel(255, 0, 12, 255, false);
+            var red = new Pixel(255, 0, 12);
             var black = new Pixel(0, 0, 0, 255, false);
 
-            builder.SetPixel(new Pixel(255, 0, 12, 255, false), 0, 0);
-            builder.SetPixel(new Pixel(255, 0, 12, 255, false), 1, 1);
+            builder.SetPixel(new Pixel(255, 0, 12), 0, 0);
+            builder.SetPixel(255, 0, 12, 1, 1);
 
             using (var memory = new MemoryStream())
             {

@@ -48,6 +48,21 @@
         }
 
         /// <summary>
+        /// Create a new <see cref="Pixel"/> which has <see cref="IsGrayscale"/> false and is fully opaque.
+        /// </summary>
+        /// <param name="r">The red value for the pixel.</param>
+        /// <param name="g">The green value for the pixel.</param>
+        /// <param name="b">The blue value for the pixel.</param>
+        public Pixel(byte r, byte g, byte b)
+        {
+            R = r;
+            G = g;
+            B = b;
+            A = 255;
+            IsGrayscale = false;
+        }
+
+        /// <summary>
         /// Create a new grayscale <see cref="Pixel"/>.
         /// </summary>
         /// <param name="grayscale">The grayscale value.</param>
