@@ -4,7 +4,7 @@
     using System.IO;
 
     /// <summary>
-    /// A PNG image. Call <see cref="Open(byte[],BigGustave.IChunkVisitor)"/> to open from file or bytes.
+    /// A PNG image. Call <see cref="Open(byte[],IChunkVisitor)"/> to open from file or bytes.
     /// </summary>
     public class Png
     {
@@ -68,6 +68,21 @@
             using (var memoryStream = new MemoryStream(bytes))
             {
                 return PngOpener.Open(memoryStream, chunkVisitor);
+            }
+        }
+
+        /// <summary>
+        /// Read the PNG from the file path.
+        /// </summary>
+        /// <param name="filePath">The path to the PNG file to open.</param>
+        /// <param name="chunkVisitor">Optional: A visitor which is called whenever a chunk is read by the library.</param>
+        /// <remarks>This will open the file to obtain a <see cref="FileStream"/> so will lock the file during reading.</remarks>
+        /// <returns>The <see cref="Png"/> data from the file.</returns>
+        public static Png Open(string filePath, IChunkVisitor chunkVisitor = null)
+        {
+            using (var fileStream = File.OpenRead(filePath))
+            {
+                return Open(fileStream, chunkVisitor);
             }
         }
     }
