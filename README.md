@@ -53,8 +53,6 @@ Where the first argument is x (column) and the second is y (row). The `Pixel` is
 
 ## Creation ##
 
-Because of some issues with ZLib compatibility the created images work with most, but not all image viewers. Of the viewers tested the images work with all browsers, Paint, Gimp, Paint3D etc.
-
 To create a PNG use:
 
     var builder = PngBuilder.Create(2, 2, false);
