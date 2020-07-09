@@ -28,6 +28,10 @@
 
             var comments = new List<CommentSection>();
             var quantizationTables = new Dictionary<int, QuantizationTableSpecification>();
+            var huffmanTableTracker = new Dictionary<int, List<HuffmanTableSpecification>>();
+            var huffmanTables = new Dictionary<int, HuffmanTableSpecification>();
+
+            var frames = new List<BaselineDctFrame>();
             
             var marker = stream.ReadSegmentMarker();
 
@@ -51,19 +55,26 @@
                         break;
                     case JpgMarkers.DefineHuffmanTable:
                         skipData = false;
+                        var huffman = HuffmanTableSpecification.ReadFromMarker(stream, strictMode);
+                        huffmanTables[huffman.DestinationIdentifier] = huffman;
+                        AddOrUpdate(huffmanTableTracker, huffman.DestinationIdentifier, huffman);
                         break;
                     case JpgMarkers.DefineRestartInterval:
                         skipData = false;
                         break;
                     case JpgMarkers.StartOfScan:
-                        skipData = true;
+                        skipData = false;
+                        var scanSingle = Scan.ReadFromMarker(stream, strictMode);
                         break;
                     case JpgMarkers.StartOfBaselineDctFrame:
-                        var frame = BaselineDctFrame.ReadFromMarker(stream, strictMode);
                         skipData = true;
+                        var frame = BaselineDctFrame.ReadFromMarker(stream, strictMode);
+                        frames.Add(frame);
                         break;
                     case JpgMarkers.StartOfProgressiveDctFrame:
                         skipData = false;
+                        break;
+                    default:
                         break;
                 }
 
@@ -88,6 +99,17 @@
 
             return bytes[0] == MarkerStart
                    && bytes[1] == StartOfImage;
+        }
+
+        private static void AddOrUpdate<T>(Dictionary<int, List<T>> dic, int key, T val)
+        {
+            if (!dic.TryGetValue(key, out var values))
+            {
+                values = new List<T>();
+                dic[key] = values;
+            }
+
+            values.Add(val);
         }
     }
 }
