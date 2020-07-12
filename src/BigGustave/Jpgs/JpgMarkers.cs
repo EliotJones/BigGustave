@@ -5,15 +5,30 @@
         /// <summary>
         /// Indicates that this is a baseline DCT-based JPEG, and specifies the width, height, number of components, and component subsampling.
         /// </summary>
-        StartOfBaselineDctFrame = 0xC0,
+        StartOfBaselineDctHuffmanFrame = 0xC0,
+        /// <summary>
+        /// Indicates that this is a extended sequential DCT-based JPEG.
+        /// </summary>
+        StartOfExtendedSequentialDctHuffmanFrame = 0xC1,
         /// <summary>
         /// Indicates that this is a progressive DCT-based JPEG, and specifies the width, height, number of components, and component subsampling.
         /// </summary>
-        StartOfProgressiveDctFrame = 0xC2,
+        StartOfProgressiveDctHuffmanFrame = 0xC2,
+        StartOfLosslessHuffmanFrame = 0xC3,
         /// <summary>
         /// Specifies one or more Huffman tables.
         /// </summary>
         DefineHuffmanTable = 0xC4,
+        StartOfDifferentialSequentialDctHuffmanFrame = 0xC5,
+        StartOfDifferentialProgressiveDctHuffmanFrame = 0xC6,
+        StartOfDifferentialLosslessHuffmanFrame = 0xC7,
+        StartOfExtendedSequentialDctArithmeticFrame = 0xC9,
+        StartOfProgressiveDctArithmeticFrame = 0xCA,
+        StartOfLosslessArithmeticFrame = 0xCB,
+        DefineArithmeticCodingConditioning = 0xCC,
+        StartOfDifferentialSequentialDctArithmeticFrame = 0xCD,
+        StartOfDifferentialProgressiveDctArithmeticFrame = 0xCE,
+        StartOfDifferentialLosslessArithmeticFrame = 0xCF,
         /// <summary>
         /// Begins a top-to-bottom scan of the image. In baseline images, there is generally a single scan.
         /// Progressive images usually contain multiple scans. 

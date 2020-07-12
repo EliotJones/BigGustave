@@ -1,11 +1,46 @@
-﻿namespace BigGustave.Jpgs
+﻿using System.Collections.Generic;
+
+namespace BigGustave.Jpgs
 {
     using System;
-    using System.Collections.Generic;
     using System.IO;
 
-    internal class BaselineDctFrame
+    internal static class FrameTypeExtensions
     {
+        public static bool IsHuffman(FrameType frameType)
+        {
+            var b = (byte) frameType;
+            return b >= 0xC0 && b <= 0xC7 && b != 0xC4;
+        }
+
+        public static bool IsArithmetic(FrameType frameType)
+        {
+            var b = (byte)frameType;
+            return b >= 0xC9 && b <= 0xCF && b != 0xCC;
+        }
+    }
+
+    internal enum FrameType : byte
+    {
+        BaselineHuffman = 0xC0,
+        ExtendedSequentialHuffman = 0xC1,
+        ProgressiveHuffman = 0xC2,
+        LosslessHuffman = 0xC3,
+        DifferentialSequentialDctHuffman = 0xC5,
+        DifferentialProgressiveDctHuffman = 0xC6,
+        DifferentialLosslessHuffman = 0xC7,
+        ExtendedSequentialArithmetic = 0xC9,
+        ProgressiveArithmetic = 0xCA,
+        LosslessArithmetic = 0xCB,
+        DifferentialSequentialDctArithmetic = 0xCD,
+        DifferentialProgressiveDctArithmetic = 0xCE,
+        DifferentialLosslessArithmetic = 0xCF,
+    }
+
+    internal class Frame
+    {
+        public FrameType FrameType { get; set; }
+
         /// <summary>
         /// Offset from the start of the file to this table's marker.
         /// </summary>
@@ -23,8 +58,11 @@
 
         public FrameComponentSpecificationParameters[] FrameComponentSpecifications { get; set; }
 
-        public static BaselineDctFrame ReadFromMarker(Stream stream, bool strictMode)
+        public List<Scan> Scans { get; } = new List<Scan>();
+
+        public static Frame ReadFromMarker(Stream stream, bool strictMode, byte markerByte)
         {
+            var frameType = (FrameType)markerByte;
             var offset = stream.Position;
             var length = stream.ReadShort();
             var samplePrecision = stream.ReadByteActual();
@@ -54,81 +92,18 @@
                 throw new InvalidOperationException($"Read incorrect number of bytes for frame header ({stream.Position - offset})," +
                                                     $" should have read {length} bytes at offset {offset}..");
             }
-
-            var scans = new List<Scan>();
-
-            // TODO: return at this point and read scans in the main image parsing.
-            JpgMarkers scanMarker;
-            while ((scanMarker = (JpgMarkers)stream.ReadSegmentMarker(true)) == JpgMarkers.StartOfScan)
-            {
-                var scanOffset = stream.Position;
-                var scanHeaderLength = stream.ReadShort();
-
-                var numberOfImageComponentsInScan = stream.ReadByteActual();
-
-                var scanComponents = new ScanComponentSpecificationParameters[numberOfImageComponentsInScan];
-
-                for (var i = 0; i < scanComponents.Length; i++)
-                {
-                    var cid = stream.ReadByteActual();
-                    var (dc, ac) = stream.ReadNibblePair();
-
-                    scanComponents[i] = new ScanComponentSpecificationParameters(cid, dc, ac);
-                }
-
-                var spectralOrPredictorSelectionStart = stream.ReadByteActual();
-
-                var spectralSelectionEnd = stream.ReadByteActual();
-
-                var (successiveApproximationHigh, successiveApproximationLow) = stream.ReadNibblePair();
-
-                scans.Add(new Scan(scanOffset, scanHeaderLength, scanComponents,
-                    spectralOrPredictorSelectionStart, spectralSelectionEnd,
-                    successiveApproximationHigh, successiveApproximationLow));
-            }
-
-            // Rewind marker.
-            stream.Seek(-2, SeekOrigin.Current);
             
-            return new BaselineDctFrame
+            return new Frame
             {
+                Offset = offset,
+                FrameType = frameType,
+                Length = length,
+                SamplePrecision = samplePrecision,
                 FrameComponentSpecifications = frameComponents,
                 NumberOfImageComponentsInFrame = numberOfImageComponentsInFrame,
                 NumberOfLines = numberOfLines,
                 NumberOfSamplesPerLine = numberOfSamplesPerLine
             };
-        }
-
-        public class Scan
-        {
-            public long Offset { get; }
-
-            public short Length { get; }
-
-            public ScanComponentSpecificationParameters[] ScanComponents { get; }
-
-            public byte StartSpectralOrPredictorSelection { get; }
-
-            public byte EndSpectralSelection { get; }
-
-            public byte SuccessiveApproximationBitHigh { get; }
-
-            public byte SuccessiveApproximationBitLow { get; }
-
-            public Scan(long offset, short length, ScanComponentSpecificationParameters[] scanComponents,
-                byte startSpectralOrPredictorSelection,
-                byte endSpectralSelection,
-                byte successiveApproximationBitHigh,
-                byte successiveApproximationBitLow)
-            {
-                Offset = offset;
-                Length = length;
-                ScanComponents = scanComponents ?? throw new ArgumentNullException(nameof(scanComponents));
-                StartSpectralOrPredictorSelection = startSpectralOrPredictorSelection;
-                EndSpectralSelection = endSpectralSelection;
-                SuccessiveApproximationBitHigh = successiveApproximationBitHigh;
-                SuccessiveApproximationBitLow = successiveApproximationBitLow;
-            }
         }
 
         public readonly struct FrameComponentSpecificationParameters
@@ -169,38 +144,6 @@
                 HorizontalSamplingFactor = horizontalSamplingFactor;
                 VerticalSamplingFactor = verticalSamplingFactor;
                 DestinationQuantizationTableSelector = destinationQuantizationTableSelector;
-            }
-        }
-
-        public readonly struct ScanComponentSpecificationParameters
-        {
-            /// <summary>
-            /// Scan component selector - selects which of the image components specified in
-            /// the frame parameters shall be this component in the scan.
-            /// </summary>
-            public byte ComponentSelector { get; }
-
-            /// <summary>
-            /// Specifies 1 of 4 possible DC entropy coding table destinations
-            /// from which the entropy table needed for decoding the DC coefficients
-            /// of this component is retrieved.
-            /// </summary>
-            public byte DCEntropyCodingTableSelector { get; }
-
-            /// <summary>
-            /// Specifies 1 of 4 possible AC entropy coding table destinations
-            /// from which the entropy table needed for decoding the AC coefficients
-            /// of this component is retrieved.
-            /// </summary>
-            public byte ACEntropyCodingTableSelector { get; }
-
-            public ScanComponentSpecificationParameters(byte componentSelector,
-                byte dcEntropyCodingTableSelector,
-                byte acEntropyCodingTableSelector)
-            {
-                ComponentSelector = componentSelector;
-                DCEntropyCodingTableSelector = dcEntropyCodingTableSelector;
-                ACEntropyCodingTableSelector = acEntropyCodingTableSelector;
             }
         }
     }

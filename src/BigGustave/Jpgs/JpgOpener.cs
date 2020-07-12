@@ -31,7 +31,7 @@
             var huffmanTableTracker = new Dictionary<int, List<HuffmanTableSpecification>>();
             var huffmanTables = new Dictionary<int, HuffmanTableSpecification>();
 
-            var frames = new List<BaselineDctFrame>();
+            var frames = new List<Frame>();
             
             var marker = stream.ReadSegmentMarker();
 
@@ -59,20 +59,42 @@
                         huffmanTables[huffman.DestinationIdentifier] = huffman;
                         AddOrUpdate(huffmanTableTracker, huffman.DestinationIdentifier, huffman);
                         break;
+                    case JpgMarkers.DefineArithmeticCodingConditioning:
+                        throw new NotSupportedException("No support for arithmetic coding conditioning table yet.");
                     case JpgMarkers.DefineRestartInterval:
                         skipData = false;
+                        // Specifies the length of this segment.
+                        var restartIntervalSegmentLength = stream.ReadShort();
+                        // Specifies the number of MCU in the restart interval.
+                        var restartInterval = stream.ReadShort();
                         break;
                     case JpgMarkers.StartOfScan:
                         skipData = false;
                         var scanSingle = Scan.ReadFromMarker(stream, strictMode);
+                        if (frames.Count == 0)
+                        {
+                            throw new InvalidOperationException($"Scan encountered outside any frame.");
+                        }
+
+                        frames[frames.Count - 1].Scans.Add(scanSingle);
+
                         break;
-                    case JpgMarkers.StartOfBaselineDctFrame:
-                        skipData = true;
-                        var frame = BaselineDctFrame.ReadFromMarker(stream, strictMode);
-                        frames.Add(frame);
-                        break;
-                    case JpgMarkers.StartOfProgressiveDctFrame:
+                    case JpgMarkers.StartOfBaselineDctHuffmanFrame:
+                    case JpgMarkers.StartOfExtendedSequentialDctHuffmanFrame:
+                    case JpgMarkers.StartOfProgressiveDctHuffmanFrame:
+                    case JpgMarkers.StartOfLosslessHuffmanFrame:
+                    case JpgMarkers.StartOfDifferentialSequentialDctHuffmanFrame:
+                    case JpgMarkers.StartOfDifferentialProgressiveDctHuffmanFrame:
+                    case JpgMarkers.StartOfDifferentialLosslessHuffmanFrame:
+                    case JpgMarkers.StartOfExtendedSequentialDctArithmeticFrame:
+                    case JpgMarkers.StartOfProgressiveDctArithmeticFrame:
+                    case JpgMarkers.StartOfLosslessArithmeticFrame:
+                    case JpgMarkers.StartOfDifferentialSequentialDctArithmeticFrame:
+                    case JpgMarkers.StartOfDifferentialProgressiveDctArithmeticFrame:
+                    case JpgMarkers.StartOfDifferentialLosslessArithmeticFrame:
                         skipData = false;
+                        var frame = Frame.ReadFromMarker(stream, strictMode, marker);
+                        frames.Add(frame);
                         break;
                     default:
                         break;
