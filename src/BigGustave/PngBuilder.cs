@@ -1,8 +1,10 @@
 ﻿namespace BigGustave
 {
+    using System;
     using System.IO;
     using System.IO.Compression;
     using System.Text;
+    using System.Threading.Tasks;
 
     /// <summary>
     /// Used to construct PNG images. Call <see cref="Create"/> to make a new builder.
@@ -28,6 +30,33 @@
             var length = (height * width * bpp) + height;
 
             return new PngBuilder(new byte[length], hasAlphaChannel, width, height, bpp);
+        }
+
+        /// <summary>
+        /// Create a builder from a <see cref="Png"/>.
+        /// </summary>
+        public static PngBuilder FromPng(Png png)
+        {
+            var result = Create(png.Width, png.Height, png.HasAlphaChannel);
+
+            for (int y = 0; y < png.Height; y++)
+            {
+                for (int x = 0; x < png.Width; x++)
+                {
+                    result.SetPixel(png.GetPixel(x, y), x, y);
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Create a builder from the bytes of the specified PNG image.
+        /// </summary>
+        public static PngBuilder FromPngBytes(byte[] png)
+        {
+            var pngActual = Png.Open(png);
+            return FromPng(pngActual);
         }
 
         private PngBuilder(byte[] rawData, bool hasAlphaChannel, int width, int height, int bytesPerPixel)
@@ -66,11 +95,11 @@
         /// <summary>
         /// Get the bytes of the PNG file for this builder.
         /// </summary>
-        public byte[] Save()
+        public byte[] Save(SaveOptions options = null)
         {
             using (var memoryStream = new MemoryStream())
             {
-                Save(memoryStream);
+                Save(memoryStream, options);
                 return memoryStream.ToArray();
             }
         }
@@ -78,8 +107,10 @@
         /// <summary>
         /// Write the PNG file bytes to the provided stream.
         /// </summary>
-        public void Save(Stream outputStream)
+        public void Save(Stream outputStream, SaveOptions options = null)
         {
+            AttemptCompressionOfRawData(rawData, options ?? new SaveOptions());
+
             outputStream.Write(HeaderValidationResult.ExpectedHeader, 0, HeaderValidationResult.ExpectedHeader.Length);
 
             var stream = new PngStreamWriteHelper(outputStream);
@@ -154,6 +185,62 @@
 
                 return result;
             }
+        }
+
+        /// <summary>
+        /// Attempt to improve compressability of the raw data by using adaptive filtering.
+        /// </summary>
+        private void AttemptCompressionOfRawData(byte[] rawData, SaveOptions options)
+        {
+            if (!options.AttemptCompression)
+            {
+                return;
+            }
+
+            var bytesPerScanline = 1 + (bytesPerPixel * width);
+            var scanlineCount = rawData.Length / bytesPerScanline;
+
+            var scanData = new byte[bytesPerScanline - 1];
+
+            for (var scanlineRowIndex = 0; scanlineRowIndex < scanlineCount; scanlineRowIndex++)
+            {
+                var sourceIndex = (scanlineRowIndex * bytesPerScanline) + 1;
+
+                Array.Copy(rawData, sourceIndex, scanData, 0, bytesPerScanline - 1);
+
+                var noneFilterSum = 0;
+                for (int i = 0; i < scanData.Length; i++)
+                {
+                    noneFilterSum += scanData[i];
+                }
+
+                var leftFilterSum = 0;
+                for (int i = 0; i < scanData.Length; i++)
+                {
+
+                }
+                /* 
+                 * A heuristic approach is to use adaptive filtering as follows: 
+                 *    independently for each row, apply all five filters and select the filter that produces the smallest sum of absolute values per row. 
+                 */
+            }
+        }
+
+        /// <summary>
+        /// Options for configuring generation of PNGs from a builder.
+        /// </summary>
+        public class SaveOptions
+        {
+            /// <summary>
+            /// Whether the library should try to compress the resulting image size by brute-force searching filters for the data.
+            /// This is a lossless process but can increase the save time.
+            /// </summary>
+            public bool AttemptCompression { get; set; }
+
+            /// <summary>
+            /// The number of parallel tasks allowed during compression.
+            /// </summary>
+            public int MaxDegreeOfParallelism { get; set; } = 1;
         }
     }
 }

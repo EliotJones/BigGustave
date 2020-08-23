@@ -5,6 +5,7 @@ namespace BigGustave.Tests
     using System;
     using System.Collections.Generic;
     using System.IO;
+    using BigGustave;
 
     public class PngTests
     {
@@ -189,6 +190,27 @@ namespace BigGustave.Tests
         public void TwelveByTwentyFourRgbaSixteenBitPerChannel()
         {
             CheckFile("12by24rgba16bit", 12, 24, true);
+        }
+
+        [Fact]
+        public void TenByNinePixelsWithPaletteSameAsNonPalette()
+        {
+            var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "images", $"10by9pixelscompressedrgb8bpp.png");
+            var pathRaw = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "images", $"10by9pixelsrgb8bpp.png");
+
+            var png = Png.Open(File.ReadAllBytes(path));
+            var pngRaw = Png.Open(File.ReadAllBytes(pathRaw));
+
+            for (int y = 0; y < png.Height; y++)
+            {
+                for (int x = 0; x < png.Width; x++)
+                {
+                    var pix = png.GetPixel(x, y);
+                    var pixRaw = pngRaw.GetPixel(x, y);
+
+                    Assert.Equal(pix, pixRaw);
+                }
+            }
         }
 
         private static void CheckFile(string imageName, int width, int height, bool hasAlpha, bool grayscale = false)
