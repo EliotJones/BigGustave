@@ -1,7 +1,5 @@
 # Big Gustave #
 
-[![Build status](https://ci.appveyor.com/api/projects/status/nh12x7vg36qxunp0?svg=true)](https://ci.appveyor.com/project/EliotJones/biggustave)
-
 Open, read and create PNG images in fully managed C#.
 
 ## Usage ##
@@ -68,3 +66,8 @@ To create a PNG use:
         
         return memory.ToArray();
     }
+
+You can also load a PNG into a builder which will copy all the pixel values into the builder for easy editing:
+
+    var png = Png.Create(@"C:\files\my.png");
+    var builder = PngBuilder.FromPng(png);
