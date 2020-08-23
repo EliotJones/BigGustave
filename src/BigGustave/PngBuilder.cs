@@ -4,7 +4,6 @@
     using System.IO;
     using System.IO.Compression;
     using System.Text;
-    using System.Threading.Tasks;
 
     /// <summary>
     /// Used to construct PNG images. Call <see cref="Create"/> to make a new builder.
