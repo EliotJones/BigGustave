@@ -213,6 +213,27 @@ namespace BigGustave.Tests
             }
         }
 
+        [Fact]
+        public void TenByNinePixelsWithPaletteAdditionalColorsSameAsNonPalette()
+        {
+            var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "images", $"10by9pixelscompressedrgbadditionalcolors.png");
+            var pathRaw = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "images", $"10by9pixelsrgbadditionalcolors.png");
+
+            var png = Png.Open(File.ReadAllBytes(path));
+            var pngRaw = Png.Open(File.ReadAllBytes(pathRaw));
+
+            for (int y = 0; y < png.Height; y++)
+            {
+                for (int x = 0; x < png.Width; x++)
+                {
+                    var pix = png.GetPixel(x, y);
+                    var pixRaw = pngRaw.GetPixel(x, y);
+
+                    Assert.Equal(pix, pixRaw);
+                }
+            }
+        }
+
         private static void CheckFile(string imageName, int width, int height, bool hasAlpha, bool grayscale = false)
         {
             var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "images", $"{imageName}.png");
