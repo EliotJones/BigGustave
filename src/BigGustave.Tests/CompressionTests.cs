@@ -8,8 +8,13 @@
     {
         private static string GetImageFile(string fileName) => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "images", fileName);
 
+        private static readonly PngBuilder.SaveOptions SaveCompressed = new PngBuilder.SaveOptions
+        {
+            AttemptCompression = true
+        };
+
         [Fact]
-        public void CanCompress()
+        public void CanCompressImageWithAlphaChannel()
         {
             var file = GetImageFile("pdfpig.png");
             var png = Png.Open(file);
@@ -20,10 +25,23 @@
 
             var sizeRaw = builder.Save().Length;
 
-            var compressed = builder.Save(new PngBuilder.SaveOptions
-            {
-                AttemptCompression = true
-            }); ;
+            var compressed = builder.Save(SaveCompressed);
+
+            File.WriteAllBytes(@"C:\temp\mycompressed.png", compressed);
+
+            Assert.True(compressed.Length < sizeRaw, $"Compressed size {compressed.Length} bytes was not smaller than raw size {sizeRaw}.");
+        }
+
+        [Fact]
+        public void CanCompressImageUsingPalette()
+        {
+            var rawBytes = File.ReadAllBytes(GetImageFile("10by9pixelsrgb8bpp.png"));
+            var png = Png.Open(rawBytes);
+            var builder = PngBuilder.FromPng(png);
+
+            var compressed = builder.Save(SaveCompressed);
+
+            Assert.True(compressed.Length < rawBytes.Length, $"Compressed size {compressed.Length} bytes was not smaller than raw size {rawBytes.Length}.");
         }
 
         private static void CopyPngToBuilder(Png png, PngBuilder builder)

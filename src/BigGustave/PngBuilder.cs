@@ -1,8 +1,10 @@
 ﻿namespace BigGustave
 {
     using System;
+    using System.Collections.Generic;
     using System.IO;
     using System.IO.Compression;
+    using System.Linq;
     using System.Text;
 
     /// <summary>
@@ -18,6 +20,11 @@
         private readonly int width;
         private readonly int height;
         private readonly int bytesPerPixel;
+
+        private bool hasTooManyColorsForPalette;
+
+        private readonly int backgroundColorInt;
+        private readonly Dictionary<int, int> colorCounts;
 
         /// <summary>
         /// Create a builder for a PNG with the given width and size.
@@ -65,6 +72,13 @@
             this.width = width;
             this.height = height;
             this.bytesPerPixel = bytesPerPixel;
+
+            backgroundColorInt = PixelToColorInt(0, 0, 0, hasAlphaChannel ? (byte)0 : byte.MaxValue);
+
+            colorCounts = new Dictionary<int, int>()
+            {
+                { backgroundColorInt, (width * height)}
+            };
         }
 
         /// <summary>
@@ -77,6 +91,33 @@
         /// </summary>
         public PngBuilder SetPixel(Pixel pixel, int x, int y)
         {
+            if (!hasTooManyColorsForPalette)
+            {
+                var val = PixelToColorInt(pixel);
+                if (val != backgroundColorInt)
+                {
+                    if (!colorCounts.ContainsKey(val))
+                    {
+                        colorCounts[val] = 1;
+                    }
+                    else
+                    {
+                        colorCounts[val]++;
+                    }
+
+                    colorCounts[backgroundColorInt]--;
+                    if (colorCounts[backgroundColorInt] == 0)
+                    {
+                        colorCounts.Remove(backgroundColorInt);
+                    }
+                }
+
+                if (colorCounts.Count > 256)
+                {
+                    hasTooManyColorsForPalette = true;
+                }
+            }
+
             var start = (y * ((width * bytesPerPixel) + 1)) + 1 + (x * bytesPerPixel);
 
             rawData[start++] = pixel.R;
@@ -90,7 +131,7 @@
 
             return this;
         }
-        
+
         /// <summary>
         /// Get the bytes of the PNG file for this builder.
         /// </summary>
@@ -108,7 +149,79 @@
         /// </summary>
         public void Save(Stream outputStream, SaveOptions options = null)
         {
-            AttemptCompressionOfRawData(rawData, options ?? new SaveOptions());
+            options = options ?? new SaveOptions();
+
+            byte[] palette = null;
+            var dataLength = rawData.Length;
+            var bitDepth = 8;
+
+            if (!hasTooManyColorsForPalette)
+            {
+                var paletteColors = colorCounts.OrderByDescending(x => x.Value).Select(x => x.Key).ToList();
+                bitDepth = paletteColors.Count >= 128 ? 8 : 4;
+                var samplesPerByte = bitDepth == 8 ? 1 : 2;
+                var applyShift = samplesPerByte == 2;
+
+                palette = new byte[3 * paletteColors.Count];
+
+                for (var i = 0; i < paletteColors.Count; i++)
+                {
+                    var color = ColorIntToPixel(paletteColors[i]);
+                    var startIndex = i * 3;
+                    palette[startIndex++] = color.r;
+                    palette[startIndex++] = color.g;
+                    palette[startIndex] = color.b;
+                }
+
+                var rawDataIndex = 0;
+
+                for (var y = 0; y < height; y++)
+                {
+                    // None filter - we don't use filtering for palette images.
+                    rawData[rawDataIndex++] = 0;
+
+                    for (var x = 0; x < width; x++)
+                    {
+                        var index = ((y * width * bytesPerPixel) + y + 1) + (x * bytesPerPixel);
+
+                        var r = rawData[index++];
+                        var g = rawData[index++];
+                        var b = rawData[index];
+
+                        var colorInt = PixelToColorInt(r, g, b);
+
+                        var value = (byte)paletteColors.IndexOf(colorInt);
+
+                        if (applyShift)
+                        {
+                            // apply mask and shift
+                            var withinByteIndex = x % 2;
+
+                            if (withinByteIndex == 1)
+                            {
+                                rawData[rawDataIndex] = (byte)(rawData[rawDataIndex] + value);
+                                rawDataIndex++;
+                            }
+                            else
+                            {
+                                rawData[rawDataIndex] = (byte)(value << 4);
+                            }
+                        }
+                        else
+                        {
+                            rawData[rawDataIndex++] = value;
+                        }
+
+                    }
+                }
+
+                dataLength = rawDataIndex;
+                File.WriteAllBytes(@"C:\temp\mycompressed.bin", rawData.Take(dataLength).ToArray());
+            }
+            else
+            {
+                AttemptCompressionOfRawData(rawData, options);
+            }
 
             outputStream.Write(HeaderValidationResult.ExpectedHeader, 0, HeaderValidationResult.ExpectedHeader.Length);
 
@@ -119,12 +232,17 @@
 
             StreamHelper.WriteBigEndianInt32(stream, width);
             StreamHelper.WriteBigEndianInt32(stream, height);
-            stream.WriteByte(8);
+            stream.WriteByte((byte)bitDepth);
 
             var colorType = ColorType.ColorUsed;
             if (hasAlphaChannel)
             {
                 colorType |= ColorType.AlphaChannelUsed;
+            }
+
+            if (palette != null)
+            {
+                colorType |= ColorType.PaletteUsed;
             }
 
             stream.WriteByte((byte)colorType);
@@ -134,7 +252,15 @@
 
             stream.WriteCrc();
 
-            var imageData = Compress(rawData);
+            if (palette != null)
+            {
+                stream.WriteChunkLength(palette.Length);
+                stream.WriteChunkHeader(Encoding.ASCII.GetBytes("PLTE"));
+                stream.Write(palette, 0, palette.Length);
+                stream.WriteCrc();
+            }
+
+            var imageData = Compress(rawData, dataLength, options);
             stream.WriteChunkLength(imageData.Length);
             stream.WriteChunkHeader(Encoding.ASCII.GetBytes("IDAT"));
             stream.Write(imageData, 0, imageData.Length);
@@ -145,14 +271,17 @@
             stream.WriteCrc();
         }
 
-        private static byte[] Compress(byte[] data)
+        private static byte[] Compress(byte[] data, int dataLength, SaveOptions options)
         {
             const int headerLength = 2;
             const int checksumLength = 4;
+
+            var compressionLevel = options?.AttemptCompression == true ? CompressionLevel.Optimal : CompressionLevel.Fastest;
+
             using (var compressStream = new MemoryStream())
-            using (var compressor = new DeflateStream(compressStream, CompressionLevel.Fastest, true))
+            using (var compressor = new DeflateStream(compressStream, compressionLevel, true))
             {
-                compressor.Write(data, 0, data.Length);
+                compressor.Write(data, 0, dataLength);
                 compressor.Close();
 
                 compressStream.Seek(0, SeekOrigin.Begin);
@@ -168,12 +297,12 @@
                 var i = 0;
                 while ((streamValue = compressStream.ReadByte()) != -1)
                 {
-                    result[headerLength + i] = (byte) streamValue;
+                    result[headerLength + i] = (byte)streamValue;
                     i++;
                 }
 
                 // Write Checksum of raw data.
-                var checksum = Adler32Checksum.Calculate(data);
+                var checksum = Adler32Checksum.Calculate(data, dataLength);
 
                 var offset = headerLength + compressStream.Length;
 
@@ -225,14 +354,23 @@
             }
         }
 
+        private static int PixelToColorInt(Pixel p) => PixelToColorInt(p.R, p.G, p.B, p.A);
+        private static int PixelToColorInt(byte r, byte g, byte b, byte a = 255)
+        {
+            return (a << 24) + (r << 16) + (g << 8) + b;
+        }
+
+        private static (byte r, byte g, byte b, byte a) ColorIntToPixel(int i) => ((byte)(i >> 16), (byte)(i >> 8), (byte)i, (byte)(i >> 24));
+
         /// <summary>
-        /// Options for configuring generation of PNGs from a builder.
+        /// Options for configuring generation of PNGs from a <see cref="PngBuilder"/>.
         /// </summary>
         public class SaveOptions
         {
             /// <summary>
-            /// Whether the library should try to compress the resulting image size by brute-force searching filters for the data.
-            /// This is a lossless process but can increase the save time.
+            /// Whether the library should try to reduce the resulting image size.
+            /// This process does not affect the original image data (it is lossless) but may 
+            /// result in longer save times.
             /// </summary>
             public bool AttemptCompression { get; set; }
 
