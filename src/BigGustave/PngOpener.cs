@@ -60,8 +60,10 @@
                                     {
                                         throw new InvalidOperationException($"Palette data must be multiple of 3, got {header.Length}.");
                                     }
-
-                                    palette = new Palette(bytes);
+                                    // Ignore palette data unless the header.ColorType indicates that the image is paletted.
+                                    if (imageHeader.ColorType.HasFlag(ColorType.PaletteUsed)) {
+                                        palette = new Palette(bytes);
+                                    }
 
                                     break;
                                 case "IDAT":
