@@ -58,6 +58,15 @@
             => PngOpener.Open(stream, chunkVisitor);
 
         /// <summary>
+        /// Read the PNG image from the stream.
+        /// </summary>
+        /// <param name="stream">The stream containing PNG data to be read.</param>
+        /// <param name="settings">Settings to apply when opening the PNG.</param>
+        /// <returns>The <see cref="Png"/> data from the stream.</returns>
+        public static Png Open(Stream stream, PngOpenerSettings settings)
+            => PngOpener.Open(stream, settings);
+
+        /// <summary>
         /// Read the PNG image from the bytes.
         /// </summary>
         /// <param name="bytes">The bytes of the PNG data to be read.</param>
@@ -68,6 +77,20 @@
             using (var memoryStream = new MemoryStream(bytes))
             {
                 return PngOpener.Open(memoryStream, chunkVisitor);
+            }
+        }
+
+        /// <summary>
+        /// Read the PNG image from the bytes.
+        /// </summary>
+        /// <param name="bytes">The bytes of the PNG data to be read.</param>
+        /// <param name="settings">Settings to apply when opening the PNG.</param>
+        /// <returns>The <see cref="Png"/> data from the bytes.</returns>
+        public static Png Open(byte[] bytes, PngOpenerSettings settings)
+        {
+            using (var memoryStream = new MemoryStream(bytes))
+            {
+                return PngOpener.Open(memoryStream, settings);
             }
         }
 
@@ -83,6 +106,21 @@
             using (var fileStream = File.OpenRead(filePath))
             {
                 return Open(fileStream, chunkVisitor);
+            }
+        }
+
+        /// <summary>
+        /// Read the PNG from the file path.
+        /// </summary>
+        /// <param name="filePath">The path to the PNG file to open.</param>
+        /// <param name="settings">Settings to apply when opening the PNG.</param>
+        /// <remarks>This will open the file to obtain a <see cref="FileStream"/> so will lock the file during reading.</remarks>
+        /// <returns>The <see cref="Png"/> data from the file.</returns>
+        public static Png Open(string filePath, PngOpenerSettings settings)
+        {
+            using (var fileStream = File.OpenRead(filePath))
+            {
+                return Open(fileStream, settings);
             }
         }
     }
