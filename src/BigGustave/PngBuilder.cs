@@ -216,7 +216,6 @@
                 }
 
                 dataLength = rawDataIndex;
-                File.WriteAllBytes(@"C:\temp\mycompressed.bin", rawData.Take(dataLength).ToArray());
             }
             else
             {
