@@ -26,6 +26,8 @@
         private readonly int backgroundColorInt;
         private readonly Dictionary<int, int> colorCounts;
 
+        private readonly List<(string keyword, byte[] data)> storedStrings = new List<(string keyword, byte[] data)>();
+
         /// <summary>
         /// Create a builder for a PNG with the given width and size.
         /// </summary>
@@ -128,6 +130,72 @@
             {
                 rawData[start] = pixel.A;
             }
+
+            return this;
+        }
+
+        /// <summary>
+        /// Allows you to store arbitrary text data in the "iTXt" international textual data
+        /// chunks of the generated PNG image.
+        /// </summary>
+        /// <param name="keyword">
+        /// A keyword identifying the text data between 1-79 characters in length.
+        /// Must not start with, end with or contain consecutive whitespace characters.
+        /// Only characters in the range 32 - 126 and 161 - 255 are permitted.
+        /// </param>
+        /// <param name="text">
+        /// The text data to store. Encoded as UTF-8 that may not contain zero (0) bytes but can be zero-length.
+        /// </param>
+        public PngBuilder StoreText(string keyword, string text)
+        {
+            if (keyword == null)
+            {
+                throw new ArgumentNullException(nameof(keyword), "Keyword may not be null.");
+            }
+
+            if (text == null)
+            {
+                throw new ArgumentNullException(nameof(text), "Text may not be null.");
+            }
+
+            if (keyword == string.Empty)
+            {
+                throw new ArgumentException("Keyword may not be empty.", nameof(keyword));
+            }
+
+            if (keyword.Length > 79)
+            {
+                throw new ArgumentException($"Keyword must be between 1 - 79 characters, provided keyword '{keyword}' has length of {keyword.Length} characters.",
+                    nameof(keyword));
+            }
+
+            for (var i = 0; i < keyword.Length; i++)
+            {
+                var c = keyword[i];
+                var isValid = (c >= 32 && c <= 126) || (c >= 161 && c <= 255);
+                if (!isValid)
+                {
+                    throw new ArgumentException("The keyword can only contain printable Latin 1 characters and spaces in the ranges 32 - 126 or 161 -255. " +
+                                                $"The provided keyword '{keyword}' contained an invalid character ({c}) at index {i}.", nameof(keyword));
+                }
+
+                // TODO: trailing, leading and consecutive whitespaces are also prohibited.
+            }
+
+            var bytes = Encoding.UTF8.GetBytes(text);
+
+            for (var i = 0; i < bytes.Length; i++)
+            {
+                var b = bytes[i];
+
+                if (b == 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(text), "The provided text contained a null (0) byte when converted to UTF-8. Null bytes are not permitted. " +
+                                                                        $"Text was: '{text}'");
+                }
+            }
+
+            storedStrings.Add((keyword, bytes));
 
             return this;
         }
@@ -264,6 +332,31 @@
             stream.WriteChunkHeader(Encoding.ASCII.GetBytes("IDAT"));
             stream.Write(imageData, 0, imageData.Length);
             stream.WriteCrc();
+
+            foreach (var storedString in storedStrings)
+            {
+                var keyword = Encoding.GetEncoding("iso-8859-1").GetBytes(storedString.keyword);
+                var length = keyword.Length
+                             + 1 // Null separator
+                             + 1 // Compression flag
+                             + 1 // Compression method
+                             + 1 // Null separator
+                             + 1 // Null separator
+                             + storedString.data.Length;
+
+                stream.WriteChunkLength(length);
+                stream.WriteChunkHeader(Encoding.ASCII.GetBytes("iTXt"));
+                stream.Write(keyword, 0, keyword.Length);
+                
+                stream.WriteByte(0); // Null separator
+                stream.WriteByte(0); // Compression flag (0 for uncompressed)
+                stream.WriteByte(0); // Compression method (0, ignored since flag is zero)
+                stream.WriteByte(0); // Null separator
+                stream.WriteByte(0); // Null separator
+
+                stream.Write(storedString.data, 0, storedString.data.Length);
+                stream.WriteCrc();
+            }
 
             stream.WriteChunkLength(0);
             stream.WriteChunkHeader(Encoding.ASCII.GetBytes("IEND"));
