@@ -1,8 +1,10 @@
-# Big Gustave #
+# Big Gustave
+
+![NuGet](https://img.shields.io/nuget/dt/BigGustave?style=flat-square)
 
 Open, read and create PNG images in fully managed C#.
 
-## Usage ##
+## Usage
 
 To open a PNG image from file and get some pixel values:
 
@@ -20,8 +22,8 @@ To open a PNG image from file and get some pixel values:
 
         pixelRedAverage += pixel.R;
 
-        Console.WriteLine(pixelRedAverage / 2.0);       
-        
+        Console.WriteLine(pixelRedAverage / 2.0);
+
     }
 
 The PNG object has methods to inspect the header and get the pixel values. The header has properties for:
@@ -49,7 +51,7 @@ To get a pixel use:
 
 Where the first argument is x (column) and the second is y (row). The `Pixel` is used for all image types, e.g. Grayscale, Colour, with/without transparency.
 
-## Creation ##
+## Creation
 
 To create a PNG use:
 
@@ -63,7 +65,7 @@ To create a PNG use:
     using (var memory = new MemoryStream())
     {
         builder.Save(memory);
-        
+
         return memory.ToArray();
     }
 
