@@ -67,6 +67,67 @@
             return FromPng(pngActual);
         }
 
+        /// <summary>
+        /// Create a builder from the bytes in the BGRA32 pixel format.
+        /// https://docs.microsoft.com/en-us/dotnet/api/system.windows.media.pixelformats.bgra32
+        /// </summary>
+        /// <param name="data">The pixels in BGRA32 format.</param>
+        /// <param name="width">The width in pixels.</param>
+        /// <param name="height">The height in pixels.</param>
+        /// <param name="useAlphaChannel">Whether to include an alpha channel in the output.</param>
+        public static PngBuilder FromBgra32Pixels(byte[] data, int width, int height, bool useAlphaChannel = true)
+        {
+            using (var memoryStream = new MemoryStream(data))
+            {
+                var builder = FromBgra32Pixels(memoryStream, width, height, useAlphaChannel);
+
+                return builder;
+            }
+        }
+
+        /// <summary>
+        /// Create a builder from the bytes in the BGRA32 pixel format.
+        /// https://docs.microsoft.com/en-us/dotnet/api/system.windows.media.pixelformats.bgra32
+        /// </summary>
+        /// <param name="data">The pixels in BGRA32 format.</param>
+        /// <param name="width">The width in pixels.</param>
+        /// <param name="height">The height in pixels.</param>
+        /// <param name="useAlphaChannel">Whether to include an alpha channel in the output.</param>
+        public static PngBuilder FromBgra32Pixels(Stream data, int width, int height, bool useAlphaChannel = true)
+        {
+            var bpp = useAlphaChannel ? 4 : 3;
+
+            var length = (height * width * bpp) + height;
+
+            var builder = new PngBuilder(new byte[length], useAlphaChannel, width, height, bpp);
+
+            var buffer = new byte[4];
+
+            for (var y = 0; y < height; y++)
+            {
+                for (var x = 0; x < width; x++)
+                {
+                    var read = data.Read(buffer, 0, buffer.Length);
+
+                    if (read != 4)
+                    {
+                        throw new InvalidOperationException($"Unexpected end of stream, expected to read 4 bytes at offset {data.Position - read} for (x: {x}, y: {y}), instead got {read}.");
+                    }
+
+                    if (useAlphaChannel)
+                    {
+                        builder.SetPixel(new Pixel(buffer[0], buffer[1], buffer[2], buffer[3], false), x, y);
+                    }
+                    else
+                    {
+                        builder.SetPixel(buffer[0], buffer[1], buffer[2], x, y);
+                    }
+                }
+            }
+
+            return builder;
+        }
+
         private PngBuilder(byte[] rawData, bool hasAlphaChannel, int width, int height, int bytesPerPixel)
         {
             this.rawData = rawData;
@@ -223,7 +284,7 @@
             var dataLength = rawData.Length;
             var bitDepth = 8;
 
-            if (!hasTooManyColorsForPalette)
+            if (!hasTooManyColorsForPalette && !hasAlphaChannel)
             {
                 var paletteColors = colorCounts.OrderByDescending(x => x.Value).Select(x => x.Key).ToList();
                 bitDepth = paletteColors.Count >= 128 ? 8 : 4;
