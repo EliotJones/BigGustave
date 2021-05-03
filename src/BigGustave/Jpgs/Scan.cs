@@ -7,7 +7,8 @@ namespace BigGustave.Jpgs
     internal class Scan
     {
         private readonly List<int> restartIndices;
-        private readonly List<byte> data;
+        
+        public IReadOnlyList<byte> Data { get; }
 
         public ComponentSpecificationParameters[] Components { get; }
 
@@ -24,7 +25,7 @@ namespace BigGustave.Jpgs
             Components = components;
             SpectralPredictionSelection = spectralPredictionSelection;
             SuccessiveApproximationBits = successiveApproximationBits;
-            this.data = data;
+            Data = data;
             this.restartIndices = restartIndices;
         }
 
@@ -74,10 +75,12 @@ namespace BigGustave.Jpgs
                 {
                     if (b == 0x00)
                     {
+                        // Represents an 0xFF byte
                         data.Add(lastByte);
                     }
                     else if (b >= 0xD0 && b <= 0xD7)
                     {
+                        // Restart markers
                         lastByte = 0x00;
                         restartIndices.Add(data.Count);
                         continue;

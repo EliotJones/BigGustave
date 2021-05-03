@@ -6,15 +6,23 @@
     {
         private const short NonValueLength = 2 + 1 + 16;
 
-        public byte DestinationIdentifier { get; set; }
+        public byte DestinationIdentifier { get; }
 
-        public byte TableClass { get; set; }
+        public HuffmanClass TableClass { get; }
 
-        public byte[] CodesPerLength { get; set; }
+        public byte[] Lengths { get; }
 
-        public byte[] CodeValues { get; set; }
+        public byte[] Elements { get; }
 
-        public static HuffmanTableSpecification ReadFromMarker(Stream stream, bool strictMode)
+        public HuffmanTableSpecification(byte destinationIdentifier, HuffmanClass tableClass, byte[] lengths, byte[] elements)
+        {
+            DestinationIdentifier = destinationIdentifier;
+            TableClass = tableClass;
+            Lengths = lengths;
+            Elements = elements;
+        }
+
+        public static HuffmanTableSpecification ReadFromMarker(Stream stream)
         {
             var tableDefinitionLength = stream.ReadShort();
 
@@ -34,13 +42,17 @@
                 huffmanCodeValues[i] = stream.ReadByteActual();
             }
 
-            return new HuffmanTableSpecification
-            {
-                TableClass = tableClass,
-                DestinationIdentifier = destinationIdentifier,
-                CodeValues = huffmanCodeValues,
-                CodesPerLength = lengths
-            };
+            return new HuffmanTableSpecification(
+                destinationIdentifier,
+                (HuffmanClass) tableClass,
+                lengths,
+                huffmanCodeValues);
+        }
+
+        public enum HuffmanClass : byte
+        {
+            DcTable = 0,
+            AcTable = 1
         }
     }
 }

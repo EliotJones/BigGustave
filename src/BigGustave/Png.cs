@@ -1,4 +1,8 @@
-﻿namespace BigGustave
+﻿using System.Runtime.CompilerServices;
+
+[assembly: InternalsVisibleTo("BigGustave.Tests")]
+
+namespace BigGustave
 {
     using System;
     using System.IO;
