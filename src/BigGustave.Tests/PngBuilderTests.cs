@@ -1,6 +1,8 @@
 ﻿namespace BigGustave.Tests
 {
+    using System.Collections.Generic;
     using System.IO;
+    using System.Linq;
     using Xunit;
 
     public class PngBuilderTests
@@ -36,6 +38,35 @@
         }
 
         [Fact]
+        public void SimpleCheckerboardWithArbitraryTextData()
+        {
+            var builder = PngBuilder.Create(2, 2, false);
+
+            builder.SetPixel(new Pixel(255, 0, 12), 0, 0);
+            builder.SetPixel(255, 0, 12, 1, 1);
+
+            builder.StoreText("Title", "Checkerboard");
+            builder.StoreText("another-data", "bərd that's good and other\r\nstuff");
+
+            using (var memory = new MemoryStream())
+            {
+                builder.Save(memory);
+
+                memory.Seek(0, SeekOrigin.Begin);
+
+                var visitor = new MyChunkVisitor();
+
+                var read = Png.Open(memory, visitor);
+
+                Assert.NotNull(read);
+
+                var textChunks = visitor.Visited.Where(x => x.header.Name == "iTXt").ToList();
+
+                Assert.Equal(2, textChunks.Count);
+            }
+        }
+
+        [Fact]
         public void BiggerImage()
         {
             var builder = PngBuilder.Create(10, 10, false);
@@ -55,6 +86,17 @@
             using (var memoryStream = new MemoryStream())
             {
                 builder.Save(memoryStream);
+            }
+        }
+
+        private class MyChunkVisitor : IChunkVisitor
+        {
+            private readonly List<(ChunkHeader header, byte[] data)> visited = new List<(ChunkHeader header, byte[] data)>();
+            public IReadOnlyList<(ChunkHeader header, byte[] data)> Visited => visited;
+
+            public void Visit(Stream stream, ImageHeader header, ChunkHeader chunkHeader, byte[] data, byte[] crc)
+            {
+                visited.Add((chunkHeader, data));
             }
         }
     }
