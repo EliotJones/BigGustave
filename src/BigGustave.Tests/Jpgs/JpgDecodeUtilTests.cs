@@ -24,7 +24,7 @@
 
             Assert.Equal(0b00001, binaryAsInt);
 
-            var differenceValue = JpgDecodeUtil.GetDcDifference(actualCategoryFromHuffman, binaryAsInt);
+            var differenceValue = JpgDecodeUtil.GetDcDifferenceOrAcCoefficient(actualCategoryFromHuffman, binaryAsInt);
 
             Assert.Equal(-30, differenceValue);
         }
@@ -90,7 +90,7 @@
 
                 foreach (var (expected, input) in item.Value)
                 {
-                    var actual = JpgDecodeUtil.GetDcDifference(category, input);
+                    var actual = JpgDecodeUtil.GetDcDifferenceOrAcCoefficient(category, input);
 
                     Assert.Equal(expected, actual);
                 }

@@ -2,7 +2,9 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Globalization;
     using System.IO;
+    using System.Linq;
 
     internal static class JpgOpener
     {
@@ -145,19 +147,83 @@
                     var qtY = quantizationTables[frame.FrameComponentSpecifications[0].DestinationQuantizationTableSelector];
                     var qtCb = quantizationTables[frame.FrameComponentSpecifications[1].DestinationQuantizationTableSelector];
                     var qtCr = quantizationTables[frame.FrameComponentSpecifications[2].DestinationQuantizationTableSelector];
-                    BuildMatrix(str, 0, qtY, oldDcCoefficients[0], dcHuffmanTables);
+                    DecodeMcu(str, 0, qtY, oldDcCoefficients[0], dcHuffmanTables, acHuffmanTables);
                 }
             }
         }
 
-        private static void BuildMatrix(BitStream stream,
+        private static void DecodeMcu(BitStream stream,
             int index,
-            object quantization,
+            QuantizationTableSpecification quantization,
             int previousDcCoefficient,
-            IReadOnlyDictionary<int, HuffmanTable> huffmanTables)
+            IReadOnlyDictionary<int, HuffmanTable> dcHuffmanTables,
+            IReadOnlyDictionary<int, HuffmanTable> acHuffmanTables)
         {
-            var table = huffmanTables[index];
-            var code = table.Read(stream);
+            // Each Minimum Coded Unit (MCU / 8*8 block) has 64 values, 1 DC and 63 AC coefficients.
+
+            // First up we get the DC coefficient, this is encoded as a difference from the DC coefficient in the previous MCU.
+            var table = dcHuffmanTables[index];
+
+            var category = table.Read(stream);
+
+            if (!category.HasValue)
+            {
+                throw new InvalidOperationException();
+            }
+
+            var value = stream.ReadNBits(category.Value);
+
+            var difference = JpgDecodeUtil.GetDcDifferenceOrAcCoefficient(category.Value, value);
+
+            var newDcCoefficient = previousDcCoefficient + difference;
+
+            var data = new double[64];
+
+            data[0] = newDcCoefficient * quantization.QuantizationTableElements[0];
+
+            var acHuffmanTable = acHuffmanTables[index];
+
+            // Now we decode the AC coefficients.
+            for (var i = 0; i < 63; i++)
+            {
+                /*
+                 * AC coefficients are run-length encoded (RLE). The RLE data is then saved
+                 * as the number of preceding zeros (RRRR) and the actual value (SSSS).
+                 */
+                var acCategoryRead = acHuffmanTable.Read(stream);
+
+                if (!acCategoryRead.HasValue)
+                {
+                    throw new InvalidOperationException();
+                }
+
+                var acCategory = acCategoryRead.Value;
+
+                // The end-of-block (EOB) special marker, all remaining values are 0.
+                if (acCategory == 0b0000_0000)
+                {
+                    break;
+                }
+
+                // The high 4 bits are the number of preceding values
+                if (acCategory > 0b0000_1111)
+                {
+                    i += (acCategory >> 4);
+                    acCategory = (byte)(acCategory & 0b0000_1111);
+                }
+
+                var bits = stream.ReadNBits(acCategory);
+
+                var acCoefficient = JpgDecodeUtil.GetDcDifferenceOrAcCoefficient(category.Value, bits);
+
+                var acValue = acCoefficient * quantization.QuantizationTableElements[i];
+
+                var indexForValue = JpgDecodeUtil.ZigZagPattern[i];
+
+                data[indexForValue] = acValue;
+            }
+
+            var str = string.Join(", ", data.Select(x => x.ToString(CultureInfo.InvariantCulture)).ToArray());
         }
 
         private static (byte, byte, byte) ToRgb(byte y, byte cb, byte cr)
@@ -185,18 +251,6 @@
             return bytes[0] == MarkerStart
                    && bytes[1] == StartOfImage;
         }
-
-        private static void AddOrUpdate<T>(Dictionary<int, List<T>> dic, int key, T val)
-        {
-            if (!dic.TryGetValue(key, out var values))
-            {
-                values = new List<T>();
-                dic[key] = values;
-            }
-
-            values.Add(val);
-        }
-
     }
 
     internal static class InverseDiscreteCosineTransformer
