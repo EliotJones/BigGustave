@@ -1,11 +1,10 @@
 ﻿namespace BigGustave.Jpgs
 {
+    using System.Collections.Generic;
     using System.IO;
 
     internal class HuffmanTableSpecification
     {
-        private const short NonValueLength = 2 + 1 + 16;
-
         public byte DestinationIdentifier { get; }
 
         public HuffmanClass TableClass { get; }
@@ -22,31 +21,44 @@
             Elements = elements;
         }
 
-        public static HuffmanTableSpecification ReadFromMarker(Stream stream)
+        public static IReadOnlyList<HuffmanTableSpecification> ReadFromMarker(Stream stream)
         {
             var tableDefinitionLength = stream.ReadShort();
 
-            var (tableClass, destinationIdentifier) = stream.ReadNibblePair();
+            var results = new List<HuffmanTableSpecification>();
 
-            var lengths = new byte[16];
-            for (var i = 0; i < 16; i++)
+            var remainingLength = tableDefinitionLength;
+
+            while (remainingLength > 2)
             {
-                lengths[i] = stream.ReadByteActual();
+                var (tableClass, destinationIdentifier) = stream.ReadNibblePair();
+
+                var lengths = new byte[16];
+                var numberOfCodes = 0;
+                for (var i = 0; i < 16; i++)
+                {
+                    var val = stream.ReadByteActual();
+                    lengths[i] = val;
+                    numberOfCodes += val;
+                }
+
+                remainingLength -= 17;
+
+                var huffmanCodeValues = new byte[numberOfCodes];
+                for (var i = 0; i < numberOfCodes; i++)
+                {
+                    huffmanCodeValues[i] = stream.ReadByteActual();
+                    remainingLength--;
+                }
+
+                results.Add(new HuffmanTableSpecification(
+                    destinationIdentifier,
+                    (HuffmanClass)tableClass,
+                    lengths,
+                    huffmanCodeValues));
             }
 
-            var variablesLength = tableDefinitionLength - NonValueLength;
-
-            var huffmanCodeValues = new byte[variablesLength];
-            for (var i = 0; i < variablesLength; i++)
-            {
-                huffmanCodeValues[i] = stream.ReadByteActual();
-            }
-
-            return new HuffmanTableSpecification(
-                destinationIdentifier,
-                (HuffmanClass) tableClass,
-                lengths,
-                huffmanCodeValues);
+            return results;
         }
 
         public enum HuffmanClass : byte

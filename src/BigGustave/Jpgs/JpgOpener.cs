@@ -52,20 +52,26 @@
                         break;
                     case JpgMarkers.DefineQuantizationTable:
                         skipData = false;
-                        var specification = QuantizationTableSpecification.ReadFromMarker(stream, strictMode);
-                        quantizationTables[specification.TableDestinationIdentifier] = specification;
+                        var specifications = QuantizationTableSpecification.ReadFromMarker(stream, strictMode);
+                        foreach (var specification in specifications)
+                        {
+                            quantizationTables[specification.TableDestinationIdentifier] = specification;
+                        }
                         break;
                     case JpgMarkers.DefineHuffmanTable:
                         skipData = false;
-                        var huffman = HuffmanTableSpecification.ReadFromMarker(stream);
+                        var huffmanTableSpecifications = HuffmanTableSpecification.ReadFromMarker(stream);
 
-                        if (huffman.TableClass == HuffmanTableSpecification.HuffmanClass.DcTable)
+                        foreach (var specification in huffmanTableSpecifications)
                         {
-                            dcHuffmanTables[huffman.DestinationIdentifier] = HuffmanTable.FromSpecification(huffman);
-                        }
-                        else
-                        {
-                            acHuffmanTables[huffman.DestinationIdentifier] = HuffmanTable.FromSpecification(huffman);
+                            if (specification.TableClass == HuffmanTableSpecification.HuffmanClass.DcTable)
+                            {
+                                dcHuffmanTables[specification.DestinationIdentifier] = HuffmanTable.FromSpecification(specification);
+                            }
+                            else
+                            {
+                                acHuffmanTables[specification.DestinationIdentifier] = HuffmanTable.FromSpecification(specification);
+                            }
                         }
                         break;
                     case JpgMarkers.DefineArithmeticCodingConditioning:
@@ -184,7 +190,7 @@
             var acHuffmanTable = acHuffmanTables[index];
 
             // Now we decode the AC coefficients.
-            for (var i = 0; i < 63; i++)
+            for (var i = 1; i < 64; i++)
             {
                 /*
                  * AC coefficients are run-length encoded (RLE). The RLE data is then saved
@@ -214,7 +220,7 @@
 
                 var bits = stream.ReadNBits(acCategory);
 
-                var acCoefficient = JpgDecodeUtil.GetDcDifferenceOrAcCoefficient(category.Value, bits);
+                var acCoefficient = JpgDecodeUtil.GetDcDifferenceOrAcCoefficient(acCategory, bits);
 
                 var acValue = acCoefficient * quantization.QuantizationTableElements[i];
 
@@ -223,7 +229,41 @@
                 data[indexForValue] = acValue;
             }
 
+            var normalizingZeroFactor = 1 / Math.Sqrt(2);
+
+            var fullResult = new double[64];
+
+            for (int y = 0; y < 8; y++)
+            {
+                for (int x = 0; x < 8; x++)
+                {
+                    // TODO: better IDCT https://github.com/libjpeg-turbo/libjpeg-turbo/blob/master/jddctmgr.c
+                    var sum = 0d;
+
+                    for (int u = 0; u < 8; u++)
+                    {
+                        var cu = u == 0 ? normalizingZeroFactor : 1;
+                        for (int v = 0; v < 8; v++)
+                        {
+                            var cv = v == 0 ? normalizingZeroFactor : 1;
+
+                            var valInner = cu * cv * data[(u * 8) + v]
+                                           * Math.Cos(((2 * x + 1) * u * Math.PI) / 16)
+                                           * Math.Cos(((2 * y + 1) * v * Math.PI) / 16);
+
+                            sum += valInner;
+                        }
+                    }
+
+                    var resultIndex = (y * 8) + x;
+                    var pixelValue = 0.25 * sum;
+
+                    fullResult[resultIndex] = pixelValue;
+                }
+            }
+
             var str = string.Join(", ", data.Select(x => x.ToString(CultureInfo.InvariantCulture)).ToArray());
+            var str2 = string.Join(", ", fullResult.Select(x => x.ToString(CultureInfo.InvariantCulture)).ToArray());
         }
 
         private static (byte, byte, byte) ToRgb(byte y, byte cb, byte cr)

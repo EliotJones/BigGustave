@@ -61,27 +61,40 @@
         /// <summary>
         /// Reads the quantization table starting from the marker byte <see cref="JpgMarkers.DefineQuantizationTable"/>.
         /// </summary>
-        public static QuantizationTableSpecification ReadFromMarker(Stream stream, bool strictMode)
+        public static QuantizationTableSpecification[] ReadFromMarker(Stream stream, bool strictMode)
         {
             var offset = stream.Position;
             var length = stream.ReadShort();
-            var (elementPrecision, destinationId) = stream.ReadNibblePair();
 
-            var uses16BitValues = false;
-            if (elementPrecision == 1)
-            {
-                uses16BitValues = true;
-            }
-            else if (elementPrecision != 0)
-            {
-                throw new InvalidOperationException("Invalid value for quantization table element precision, should be 0 or 1, " +
-                                                    $"got: {elementPrecision} at offset {stream.Position}.");
-            }
+            // Section may contain multiple quantization tables, each with its own information byte.
+            var quantizationTableCount = length / 65;
 
-            var data = new short[64];
-            for (var i = 0; i < data.Length; i++)
+            var result = new QuantizationTableSpecification[quantizationTableCount];
+
+            for (var qtIndex = 0; qtIndex < quantizationTableCount; qtIndex++)
             {
-                data[i] = uses16BitValues ? stream.ReadShort() : stream.ReadByteActual();
+                var (elementPrecision, destinationId) = stream.ReadNibblePair();
+
+
+                var uses16BitValues = false;
+                if (elementPrecision == 1)
+                {
+                    uses16BitValues = true;
+                }
+                else if (elementPrecision != 0)
+                {
+                    throw new InvalidOperationException(
+                        "Invalid value for quantization table element precision, should be 0 or 1, " +
+                        $"got: {elementPrecision} at offset {stream.Position}.");
+                }
+
+                var data = new short[64];
+                for (var i = 0; i < data.Length; i++)
+                {
+                    data[i] = uses16BitValues ? stream.ReadShort() : stream.ReadByteActual();
+                }
+
+                result[qtIndex] = new QuantizationTableSpecification(offset, length, elementPrecision, destinationId, data);
             }
 
             var lengthRead = stream.Position - offset;
@@ -92,7 +105,7 @@
                                                     $"did not match length specified ({length}). Set strictMode to false to ignore this.");
             }
 
-            return new QuantizationTableSpecification(offset, length, elementPrecision, destinationId, data);
+            return result;
         }
     }
 }
