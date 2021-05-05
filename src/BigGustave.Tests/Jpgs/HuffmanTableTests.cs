@@ -24,10 +24,10 @@
 
             Assert.Equal(
                 5,
-                table.Tree.Root.Left.Left.Value.GetValueOrDefault());
+                table.Root.Left.Left.Value.GetValueOrDefault());
             Assert.Equal(
                 6,
-                table.Tree.Root.Left.Right.Value.GetValueOrDefault());
+                table.Root.Left.Right.Value.GetValueOrDefault());
         }
 
         [Fact]

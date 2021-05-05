@@ -157,7 +157,7 @@
             IReadOnlyDictionary<int, HuffmanTable> huffmanTables)
         {
             var table = huffmanTables[index];
-            var code = table.GetCode(stream);
+            var code = table.Read(stream);
         }
 
         private static (byte, byte, byte) ToRgb(byte y, byte cb, byte cr)
@@ -196,31 +196,7 @@
 
             values.Add(val);
         }
-    }
 
-    internal class BitStream
-    {
-        private int bitOffset;
-        private readonly IReadOnlyList<byte> data;
-
-        public BitStream(IReadOnlyList<byte> data)
-        {
-            this.data = data;
-        }
-
-        public bool Read()
-        {
-            var byteIndex = bitOffset / 8;
-
-            var byteVal = data[bitOffset / 8];
-
-            bitOffset++;
-
-            var withinByteIndex = bitOffset - (byteIndex * 8);
-
-            // TODO: LSB?
-            return ((1 << withinByteIndex) & byteVal) > 0;
-        }
     }
 
     internal static class InverseDiscreteCosineTransformer
