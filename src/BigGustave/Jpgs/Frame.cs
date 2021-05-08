@@ -26,6 +26,14 @@
 
         public FrameComponentSpecificationParameters[] FrameComponentSpecifications { get; }
 
+        public int McusPerX { get; }
+
+        public int McusPerY { get; }
+
+        public int MaxHorizontalSamplingFactor { get; }
+
+        public int MaxVerticalSamplingFactor { get; }
+
         public List<Scan> Scans { get; } = new List<Scan>();
 
         public Frame(
@@ -35,7 +43,11 @@
             short imageHeight,
             short imageWidth,
             byte numberOfComponents,
-            FrameComponentSpecificationParameters[] frameComponentSpecifications)
+            FrameComponentSpecificationParameters[] frameComponentSpecifications,
+            int mcusPerX,
+            int mcusPerY,
+            int maxHorizontalSamplingFactor,
+            int maxVerticalSamplingFactor)
         {
             FrameType = frameType;
             Offset = offset;
@@ -44,6 +56,10 @@
             ImageWidth = imageWidth;
             NumberOfComponents = numberOfComponents;
             FrameComponentSpecifications = frameComponentSpecifications;
+            McusPerX = mcusPerX;
+            McusPerY = mcusPerY;
+            MaxHorizontalSamplingFactor = maxHorizontalSamplingFactor;
+            MaxVerticalSamplingFactor = maxVerticalSamplingFactor;
         }
 
         public static Frame ReadFromMarker(Stream stream, bool strictMode, byte markerByte)
@@ -64,11 +80,23 @@
 
             var frameComponents = new FrameComponentSpecificationParameters[numberOfComponents];
 
+            var maxHorizontalFactor = 0;
+            var maxVerticalFactor = 0;
             for (var i = 0; i < frameComponents.Length; i++)
             {
                 var identifier = stream.ReadByteActual();
                 var (horizontal, vertical) = stream.ReadNibblePair();
                 var quantizationTableSelector = stream.ReadByteActual();
+
+                if (horizontal > maxHorizontalFactor)
+                {
+                    maxHorizontalFactor = horizontal;
+                }
+
+                if (vertical > maxVerticalFactor)
+                {
+                    maxVerticalFactor = vertical;
+                }
 
                 frameComponents[i] = new FrameComponentSpecificationParameters(identifier, horizontal, vertical, quantizationTableSelector);
             }
@@ -79,6 +107,15 @@
                                                     $" should have read {length} bytes at offset {offset}..");
             }
 
+            var adjustX = imageWidth % 8 == 0 ? 0 : 1;
+            var adjustY = imageHeight % 8 == 0 ? 0 : 1;
+
+            maxVerticalFactor = maxVerticalFactor > 0 ? maxVerticalFactor : 1;
+            maxHorizontalFactor = maxHorizontalFactor > 0 ? maxHorizontalFactor : 1;
+
+            var mcusPerX = (imageWidth / 8 + adjustX) / maxVerticalFactor;
+            var mcusPerY = (imageHeight / 8 + adjustY) / maxHorizontalFactor;
+
             return new Frame(
                 frameType,
                 offset,
@@ -86,7 +123,11 @@
                 imageHeight,
                 imageWidth,
                 numberOfComponents,
-                frameComponents);
+                frameComponents,
+                mcusPerX,
+                mcusPerY,
+                maxHorizontalFactor,
+                maxVerticalFactor);
         }
 
         public readonly struct FrameComponentSpecificationParameters

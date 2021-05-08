@@ -146,34 +146,50 @@
             IReadOnlyDictionary<int, HuffmanTable> dcHuffmanTables,
             IReadOnlyDictionary<int, HuffmanTable> acHuffmanTables)
         {
-            var qtY = quantizationTables[frame.FrameComponentSpecifications[0].DestinationQuantizationTableSelector];
-            var qtCb = quantizationTables[frame.FrameComponentSpecifications[1].DestinationQuantizationTableSelector];
-            var qtCr = quantizationTables[frame.FrameComponentSpecifications[2].DestinationQuantizationTableSelector];
-
             var str = new BitStream(scan.Data);
 
             // Y, Cb, Cr
-            var oldDcCoefficients = new[] {0, 0, 0};
-
-            // TODO: 0 special treatment
-            var blocksHeight = (frame.ImageHeight / 8) + (frame.ImageHeight % 8 > 0 ? 1 : 0);
-            var blocksWidth = (frame.ImageWidth / 8) + (frame.ImageWidth % 8 > 0 ? 1 : 0);
+            var oldDcCoefficients = new int[frame.NumberOfComponents];
 
             var png = PngBuilder.Create(frame.ImageWidth, frame.ImageHeight, false);
 
-            var indexForResult = 0;
-            for (var i = 0; i < blocksHeight; i++)
-            {
-                for (var j = 0; j < blocksWidth; j++)
-                {
-                    for (var k = 0; k < frame.FrameComponentSpecifications.Length; k++)
-                    {
-                        var component = frame.FrameComponentSpecifications[k];
-                    }
+            var samplesByComponent = new List<List<double[]>>();
 
-                    var (newYDcCoefficient, yMcu) = DecodeMcu(str, 0, qtY, oldDcCoefficients[0], dcHuffmanTables, acHuffmanTables);
-                    var (newCbDcCoefficient, cbMcu) = DecodeMcu(str, 1, qtCb, oldDcCoefficients[1], dcHuffmanTables, acHuffmanTables);
-                    var (newCrDcCoefficient, crMcu) = DecodeMcu(str, 1, qtCr, oldDcCoefficients[2], dcHuffmanTables, acHuffmanTables);
+            var indexForResult = 0;
+            for (var row = 0; row < frame.McusPerY; row++)
+            {
+                for (var col = 0; col < frame.McusPerX; col++)
+                {
+                    samplesByComponent.Clear();
+
+                    for (var componentIndex = 0; componentIndex < frame.FrameComponentSpecifications.Length; componentIndex++)
+                    {
+                        var componentSamples = new List<double[]>();
+                        var component = frame.FrameComponentSpecifications[componentIndex];
+
+                        var qt = quantizationTables[component.DestinationQuantizationTableSelector];
+                        var index = componentIndex > 0 ? 1 : 0;
+
+                        for (var y = 0; y < component.HorizontalSamplingFactor; y++)
+                        {
+                            for (var x = 0; x < component.VerticalSamplingFactor; x++)
+                            {
+                                var (newDcCoeff, dcu) = DecodeDcu(
+                                    str,
+                                    index,
+                                    qt,
+                                    oldDcCoefficients[componentIndex],
+                                    dcHuffmanTables,
+                                    acHuffmanTables);
+
+                                oldDcCoefficients[componentIndex] = newDcCoeff;
+
+                                componentSamples.Add(dcu);
+                            }
+                        }
+
+                        samplesByComponent.Add(componentSamples);
+                    }
 
                     for (int y = 0; y < 8; y++)
                     {
@@ -189,19 +205,29 @@
                                 break;
                             }
 
+                            var outX = (col * 8) + x;
+                            var outY = (row * 8) + y;
+
+                            if (outY == 55 && outX == 276)
+                            {
+                                
+                            }
+
                             var flatIndex = (y * 8) + x;
-                            var (r, g, b) = ToRgb(yMcu[flatIndex], cbMcu[flatIndex], crMcu[flatIndex]);
+                            var (r, g, b) = ToRgb(samplesByComponent[0][0][flatIndex],
+                                samplesByComponent[1][0][flatIndex],
+                                samplesByComponent[2][0][flatIndex]);
                             resultHolder[indexForResult++] = r;
                             resultHolder[indexForResult++] = g;
                             resultHolder[indexForResult++] = b;
 
-                            png.SetPixel(r, g, b, (j * 8) + x, (i * 8) + y);
+                            png.SetPixel(r, g, b, (col * 8) + x, (row * 8) + y);
                         }
                     }
 
-                    oldDcCoefficients[0] = newYDcCoefficient;
-                    oldDcCoefficients[1] = newCbDcCoefficient;
-                    oldDcCoefficients[2] = newCrDcCoefficient;
+                    //oldDcCoefficients[0] = newYDcCoefficient;
+                    //oldDcCoefficients[1] = newCbDcCoefficient;
+                    //oldDcCoefficients[2] = newCrDcCoefficient;
                 }
             }
 
@@ -209,7 +235,7 @@
             File.WriteAllBytes(@"C:\temp\bgjpgout.jpg", img);
         }
 
-        private static (int dcCoefficient, double[] data) DecodeMcu(BitStream stream,
+        private static (int dcCoefficient, double[] data) DecodeDcu(BitStream stream,
             int index,
             QuantizationTableSpecification quantization,
             int previousDcCoefficient,
@@ -239,7 +265,7 @@
             data[0] = newDcCoefficient * quantization.QuantizationTableElements[0];
 
             var acHuffmanTable = acHuffmanTables[index];
-            
+
             // Now we decode the AC coefficients.
             for (var i = 1; i < 64; i++)
             {
@@ -312,8 +338,9 @@
                         }
                     }
 
-                    var resultIndex = (y) + (x*8);
-                    var pixelValue = 0.25 * sum;
+                    // Transpose X and Y here
+                    var resultIndex = (y) + (x * 8);
+                    var pixelValue = Math.Round((0.25 * sum) + 128);
 
                     fullResult[resultIndex] = pixelValue;
                 }
@@ -324,16 +351,18 @@
 
         private static (byte, byte, byte) ToRgb(double y, double cb, double cr)
         {
-            var crVal = cr;
-            var cbVal = cb;
+            var crVal = cr - 128;
+            var cbVal = cb - 128;
 
-            y += 128;
+            var r = Math.Floor(y + (1.402 * crVal));
+            var g = Math.Floor(y - (0.34414 * cbVal) - (0.71414 * crVal));
+            var b = Math.Floor(y + (1.772 * cbVal));
 
-            var r = y + (1.402 * crVal);
-            var g = y - (0.34414 * cbVal) - (0.71414 * crVal);
-            var b = y + (1.772 * cbVal);
+            r = r < 0 ? 0 : r > 255 ? 255 : r;
+            g = g < 0 ? 0 : g > 255 ? 255 : g;
+            b = b < 0 ? 0 : b > 255 ? 255 : b;
 
-            return ((byte) r, (byte) g, (byte) b);
+            return ((byte)r, (byte)g, (byte)b);
         }
 
         public static bool HasJpgHeader(Stream stream)
