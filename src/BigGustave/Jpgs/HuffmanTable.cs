@@ -38,19 +38,28 @@
 
         public byte? Read(BitStream stream)
         {
-            var item = Root;
-            while (item != null)
+            var infiniteLoopDetector = 0;
+            while (true)
             {
-                if (item.Value.HasValue)
+                if (infiniteLoopDetector > 100_000_000)
                 {
-                    return item.Value;
+                    throw new InvalidOperationException();
                 }
 
-                var direction = stream.Read();
-                item = direction == 1 ? item.Right : item.Left;
-            }
+                var item = Root;
+                while (item != null)
+                {
+                    if (item.Value.HasValue)
+                    {
+                        return item.Value;
+                    }
 
-            return null;
+                    var direction = stream.Read();
+                    item = direction == 1 ? item.Right : item.Left;
+                }
+
+                infiniteLoopDetector++;
+            }
         }
 
         public class Node

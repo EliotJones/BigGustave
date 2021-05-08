@@ -77,25 +77,27 @@ namespace BigGustave.Jpgs
                     {
                         // Represents an 0xFF byte
                         data.Add(lastByte);
+                        lastByte = 0;
+                        continue;
                     }
-                    else if (b >= 0xD0 && b <= 0xD7)
+                    
+                    if (b >= 0xD0 && b <= 0xD7)
                     {
                         // Restart markers
                         lastByte = 0x00;
                         restartIndices.Add(data.Count);
                         continue;
                     }
-                    else if (b == 0xFF)
+                    
+                    if (b == 0xFF)
                     {
                         // Fill bytes
                         lastByte = b;
                         continue;
                     }
-                    else
-                    {
-                        stream.Seek(-2, SeekOrigin.Current);
-                        break;
-                    }
+
+                    stream.Seek(-2, SeekOrigin.Current);
+                    break;
                 }
 
                 if (b == 0xFF)

@@ -41,6 +41,7 @@
 
                 if (bit < 0)
                 {
+                    return 0;
                     throw new InvalidOperationException($"Encountered end of bit stream while trying to read {length} bytes.");
                 }
 

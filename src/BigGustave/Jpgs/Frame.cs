@@ -1,82 +1,68 @@
-﻿using System.Collections.Generic;
-
-namespace BigGustave.Jpgs
+﻿namespace BigGustave.Jpgs
 {
     using System;
+    using System.Collections.Generic;
     using System.IO;
-
-    internal static class FrameTypeExtensions
-    {
-        public static bool IsHuffman(FrameType frameType)
-        {
-            var b = (byte) frameType;
-            return b >= 0xC0 && b <= 0xC7 && b != 0xC4;
-        }
-
-        public static bool IsArithmetic(FrameType frameType)
-        {
-            var b = (byte)frameType;
-            return b >= 0xC9 && b <= 0xCF && b != 0xCC;
-        }
-    }
-
-    internal enum FrameType : byte
-    {
-        BaselineHuffman = 0xC0,
-        ExtendedSequentialHuffman = 0xC1,
-        ProgressiveHuffman = 0xC2,
-        LosslessHuffman = 0xC3,
-        DifferentialSequentialDctHuffman = 0xC5,
-        DifferentialProgressiveDctHuffman = 0xC6,
-        DifferentialLosslessHuffman = 0xC7,
-        ExtendedSequentialArithmetic = 0xC9,
-        ProgressiveArithmetic = 0xCA,
-        LosslessArithmetic = 0xCB,
-        DifferentialSequentialDctArithmetic = 0xCD,
-        DifferentialProgressiveDctArithmetic = 0xCE,
-        DifferentialLosslessArithmetic = 0xCF,
-    }
 
     internal class Frame
     {
-        public FrameType FrameType { get; set; }
+        public FrameType FrameType { get; }
 
         /// <summary>
         /// Offset from the start of the file to this table's marker.
         /// </summary>
-        public long Offset { get; set; }
+        public long Offset { get; }
 
-        public short Length { get; set; }
+        public byte BitsPerSample { get; }
 
-        public byte SamplePrecision { get; set; }
+        public short ImageHeight { get; }
 
-        public short NumberOfLines { get; set; }
+        public short ImageWidth { get; }
 
-        public short NumberOfSamplesPerLine { get; set; }
+        /// <summary>
+        /// Generally 1 = grayscale, 3 = YCbCr or YIQ, 4 = CMYK.
+        /// </summary>
+        public byte NumberOfComponents { get; }
 
-        public byte NumberOfImageComponentsInFrame { get; set; }
-
-        public FrameComponentSpecificationParameters[] FrameComponentSpecifications { get; set; }
+        public FrameComponentSpecificationParameters[] FrameComponentSpecifications { get; }
 
         public List<Scan> Scans { get; } = new List<Scan>();
+
+        public Frame(
+            FrameType frameType,
+            long offset,
+            byte bitsPerSample,
+            short imageHeight,
+            short imageWidth,
+            byte numberOfComponents,
+            FrameComponentSpecificationParameters[] frameComponentSpecifications)
+        {
+            FrameType = frameType;
+            Offset = offset;
+            BitsPerSample = bitsPerSample;
+            ImageHeight = imageHeight;
+            ImageWidth = imageWidth;
+            NumberOfComponents = numberOfComponents;
+            FrameComponentSpecifications = frameComponentSpecifications;
+        }
 
         public static Frame ReadFromMarker(Stream stream, bool strictMode, byte markerByte)
         {
             var frameType = (FrameType)markerByte;
             var offset = stream.Position;
             var length = stream.ReadShort();
-            var samplePrecision = stream.ReadByteActual();
+            var bitsPerSample = stream.ReadByteActual();
 
-            if (strictMode && samplePrecision != 8)
+            if (strictMode && bitsPerSample != 8)
             {
-                throw new InvalidOperationException($"Sample precision should be 8 for baseline DCT frames. Got: {samplePrecision} at offset {stream.Position}.");
+                throw new InvalidOperationException($"Sample precision should be 8 for baseline DCT frames. Got: {bitsPerSample} at offset {stream.Position}.");
             }
 
-            var numberOfLines = stream.ReadShort();
-            var numberOfSamplesPerLine = stream.ReadShort();
-            var numberOfImageComponentsInFrame = stream.ReadByteActual();
+            var imageHeight = stream.ReadShort();
+            var imageWidth = stream.ReadShort();
+            var numberOfComponents = stream.ReadByteActual();
 
-            var frameComponents = new FrameComponentSpecificationParameters[numberOfImageComponentsInFrame];
+            var frameComponents = new FrameComponentSpecificationParameters[numberOfComponents];
 
             for (var i = 0; i < frameComponents.Length; i++)
             {
@@ -92,18 +78,15 @@ namespace BigGustave.Jpgs
                 throw new InvalidOperationException($"Read incorrect number of bytes for frame header ({stream.Position - offset})," +
                                                     $" should have read {length} bytes at offset {offset}..");
             }
-            
-            return new Frame
-            {
-                Offset = offset,
-                FrameType = frameType,
-                Length = length,
-                SamplePrecision = samplePrecision,
-                FrameComponentSpecifications = frameComponents,
-                NumberOfImageComponentsInFrame = numberOfImageComponentsInFrame,
-                NumberOfLines = numberOfLines,
-                NumberOfSamplesPerLine = numberOfSamplesPerLine
-            };
+
+            return new Frame(
+                frameType,
+                offset,
+                bitsPerSample,
+                imageHeight,
+                imageWidth,
+                numberOfComponents,
+                frameComponents);
         }
 
         public readonly struct FrameComponentSpecificationParameters
@@ -129,8 +112,8 @@ namespace BigGustave.Jpgs
 
             /// <summary>
             /// Specifies one of four possible quantization table destinations
-            /// from which the quantization table to use for dequantization of DCT coefficients of component Ci is retrieved. If
-            /// the decoding process uses the dequantization procedure, this table shall have been installed in this destination
+            /// from which the quantization table to use for de-quantization of DCT coefficients of component Ci is retrieved. If
+            /// the decoding process uses the de-quantization procedure, this table shall have been installed in this destination
             /// by the time the decoder is ready to decode the scan(s) containing component Ci.
             /// The destination shall not be re-specified, or its contents changed, until all scans containing Ci have been completed.
             /// </summary>

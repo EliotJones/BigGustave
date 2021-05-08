@@ -59,5 +59,28 @@
 
             var table = HuffmanTable.FromSpecification(spec);
         }
+
+        [Fact]
+        public void SpecificationToTableAgain()
+        {
+            // From https://www.opennet.ru/docs/formats/jpeg.txt
+
+            var spec = new HuffmanTableSpecification(
+                0,
+                HuffmanTableSpecification.HuffmanClass.DcTable,
+                new byte[] {0, 2, 3, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+                new byte[] {45, 57, 29, 17, 23, 25, 34, 28});
+
+            var table = HuffmanTable.FromSpecification(spec);
+
+            var bitStream = new BitStream(new byte[]{ 0b00011001, 0b01110000 });
+
+            Assert.Equal(45, table.Read(bitStream).GetValueOrDefault());
+            Assert.Equal(57, table.Read(bitStream).GetValueOrDefault());
+
+            Assert.Equal(29, table.Read(bitStream).GetValueOrDefault());
+            Assert.Equal(17, table.Read(bitStream).GetValueOrDefault());
+            Assert.Equal(23, table.Read(bitStream).GetValueOrDefault());
+        }
     }
 }

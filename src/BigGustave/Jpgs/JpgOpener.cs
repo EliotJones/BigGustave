@@ -2,9 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
-    using System.Globalization;
     using System.IO;
-    using System.Linq;
 
     internal static class JpgOpener
     {
@@ -28,6 +26,7 @@
                 throw new ArgumentException("The provided stream did not start with the JPEG header.");
             }
 
+            var jfif = default(JfifSegment);
             var comments = new List<CommentSection>();
             var quantizationTables = new Dictionary<int, QuantizationTableSpecification>();
             var dcHuffmanTables = new Dictionary<int, HuffmanTable>();
@@ -45,6 +44,9 @@
 
                 switch (markerType)
                 {
+                    case JpgMarkers.ApplicationSpecific0:
+                        jfif = JfifSegment.ReadFromApp0(stream);
+                        break;
                     case JpgMarkers.Comment:
                         skipData = false;
                         var comment = CommentSection.ReadFromMarker(stream);
@@ -88,14 +90,18 @@
                         var scanSingle = Scan.ReadFromMarker(stream, strictMode);
                         if (frames.Count == 0)
                         {
-                            throw new InvalidOperationException($"Scan encountered outside any frame.");
+                            throw new InvalidOperationException("Scan encountered outside any frame.");
                         }
 
                         var frameForScan = frames[frames.Count - 1];
 
+                        var dataHolder = new byte[3 * frameForScan.ImageHeight * frameForScan.ImageWidth];
+
                         frameForScan.Scans.Add(scanSingle);
 
-                        ProcessFrame(frameForScan,
+                        ProcessScan(
+                            dataHolder,
+                            frameForScan,
                             scanSingle,
                             quantizationTables,
                             dcHuffmanTables,
@@ -132,33 +138,78 @@
             throw new NotImplementedException();
         }
 
-        private static void ProcessFrame(Frame frame, Scan scan,
+        private static void ProcessScan(
+            byte[] resultHolder,
+            Frame frame,
+            Scan scan,
             IReadOnlyDictionary<int, QuantizationTableSpecification> quantizationTables,
             IReadOnlyDictionary<int, HuffmanTable> dcHuffmanTables,
             IReadOnlyDictionary<int, HuffmanTable> acHuffmanTables)
         {
+            var qtY = quantizationTables[frame.FrameComponentSpecifications[0].DestinationQuantizationTableSelector];
+            var qtCb = quantizationTables[frame.FrameComponentSpecifications[1].DestinationQuantizationTableSelector];
+            var qtCr = quantizationTables[frame.FrameComponentSpecifications[2].DestinationQuantizationTableSelector];
+
             var str = new BitStream(scan.Data);
 
             // Y, Cb, Cr
-            var oldDcCoefficients = new int[] { 0, 0, 0 };
+            var oldDcCoefficients = new[] {0, 0, 0};
 
             // TODO: 0 special treatment
-            var blocksHeight = (frame.NumberOfLines / 8) + (frame.NumberOfLines % 8 > 0 ? 1 : 0);
-            var blocksWidth = (frame.NumberOfSamplesPerLine / 8) + (frame.NumberOfSamplesPerLine % 8 > 0 ? 1 : 0);
+            var blocksHeight = (frame.ImageHeight / 8) + (frame.ImageHeight % 8 > 0 ? 1 : 0);
+            var blocksWidth = (frame.ImageWidth / 8) + (frame.ImageWidth % 8 > 0 ? 1 : 0);
 
-            for (int i = 0; i < blocksHeight; i++)
+            var png = PngBuilder.Create(frame.ImageWidth, frame.ImageHeight, false);
+
+            var indexForResult = 0;
+            for (var i = 0; i < blocksHeight; i++)
             {
-                for (int j = 0; j < blocksHeight; j++)
+                for (var j = 0; j < blocksWidth; j++)
                 {
-                    var qtY = quantizationTables[frame.FrameComponentSpecifications[0].DestinationQuantizationTableSelector];
-                    var qtCb = quantizationTables[frame.FrameComponentSpecifications[1].DestinationQuantizationTableSelector];
-                    var qtCr = quantizationTables[frame.FrameComponentSpecifications[2].DestinationQuantizationTableSelector];
-                    DecodeMcu(str, 0, qtY, oldDcCoefficients[0], dcHuffmanTables, acHuffmanTables);
+                    for (var k = 0; k < frame.FrameComponentSpecifications.Length; k++)
+                    {
+                        var component = frame.FrameComponentSpecifications[k];
+                    }
+
+                    var (newYDcCoefficient, yMcu) = DecodeMcu(str, 0, qtY, oldDcCoefficients[0], dcHuffmanTables, acHuffmanTables);
+                    var (newCbDcCoefficient, cbMcu) = DecodeMcu(str, 1, qtCb, oldDcCoefficients[1], dcHuffmanTables, acHuffmanTables);
+                    var (newCrDcCoefficient, crMcu) = DecodeMcu(str, 1, qtCr, oldDcCoefficients[2], dcHuffmanTables, acHuffmanTables);
+
+                    for (int y = 0; y < 8; y++)
+                    {
+                        if (y >= frame.ImageHeight)
+                        {
+                            break;
+                        }
+
+                        for (int x = 0; x < 8; x++)
+                        {
+                            if (x >= frame.ImageWidth)
+                            {
+                                break;
+                            }
+
+                            var flatIndex = (y * 8) + x;
+                            var (r, g, b) = ToRgb(yMcu[flatIndex], cbMcu[flatIndex], crMcu[flatIndex]);
+                            resultHolder[indexForResult++] = r;
+                            resultHolder[indexForResult++] = g;
+                            resultHolder[indexForResult++] = b;
+
+                            png.SetPixel(r, g, b, (j * 8) + x, (i * 8) + y);
+                        }
+                    }
+
+                    oldDcCoefficients[0] = newYDcCoefficient;
+                    oldDcCoefficients[1] = newCbDcCoefficient;
+                    oldDcCoefficients[2] = newCrDcCoefficient;
                 }
             }
+
+            var img = png.Save();
+            File.WriteAllBytes(@"C:\temp\bgjpgout.jpg", img);
         }
 
-        private static void DecodeMcu(BitStream stream,
+        private static (int dcCoefficient, double[] data) DecodeMcu(BitStream stream,
             int index,
             QuantizationTableSpecification quantization,
             int previousDcCoefficient,
@@ -188,7 +239,7 @@
             data[0] = newDcCoefficient * quantization.QuantizationTableElements[0];
 
             var acHuffmanTable = acHuffmanTables[index];
-
+            
             // Now we decode the AC coefficients.
             for (var i = 1; i < 64; i++)
             {
@@ -218,6 +269,11 @@
                     acCategory = (byte)(acCategory & 0b0000_1111);
                 }
 
+                if (i > 63)
+                {
+                    break;
+                }
+
                 var bits = stream.ReadNBits(acCategory);
 
                 var acCoefficient = JpgDecodeUtil.GetDcDifferenceOrAcCoefficient(acCategory, bits);
@@ -238,6 +294,7 @@
                 for (int x = 0; x < 8; x++)
                 {
                     // TODO: better IDCT https://github.com/libjpeg-turbo/libjpeg-turbo/blob/master/jddctmgr.c
+                    // Or we could just cache most of this
                     var sum = 0d;
 
                     for (int u = 0; u < 8; u++)
@@ -255,26 +312,28 @@
                         }
                     }
 
-                    var resultIndex = (y * 8) + x;
+                    var resultIndex = (y) + (x*8);
                     var pixelValue = 0.25 * sum;
 
                     fullResult[resultIndex] = pixelValue;
                 }
             }
 
-            var str = string.Join(", ", data.Select(x => x.ToString(CultureInfo.InvariantCulture)).ToArray());
-            var str2 = string.Join(", ", fullResult.Select(x => x.ToString(CultureInfo.InvariantCulture)).ToArray());
+            return (newDcCoefficient, fullResult);
         }
 
-        private static (byte, byte, byte) ToRgb(byte y, byte cb, byte cr)
+        private static (byte, byte, byte) ToRgb(double y, double cb, double cr)
         {
-            var crVal = cr - 128;
-            var cbVal = cb - 128;
+            var crVal = cr;
+            var cbVal = cb;
 
-            return (
-                    (byte)(y + (1.402 * crVal)),
-                    (byte)(y - (0.34414 * cbVal) - (0.71414 * crVal)),
-                    (byte)(y + (1.772 * cbVal)));
+            y += 128;
+
+            var r = y + (1.402 * crVal);
+            var g = y - (0.34414 * cbVal) - (0.71414 * crVal);
+            var b = y + (1.772 * cbVal);
+
+            return ((byte) r, (byte) g, (byte) b);
         }
 
         public static bool HasJpgHeader(Stream stream)

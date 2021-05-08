@@ -20,7 +20,7 @@
             
             var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "images", "jpg", "2by2checkerboard-green.jpg");
 
-            using (var stream = File.OpenRead(path))
+            using (var stream = File.OpenRead(path))//@"C:\git\python\micro-jpeg-visualizer\images\porsche.jpg"))
             {
                 var img = Jpg.Open(stream);
 
