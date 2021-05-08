@@ -9,13 +9,13 @@
         [Fact]
         public void TwoByTwoCheckerboardGreen()
         {
-            var green = new Pixel(75, 204, 77);
-            var blackish = new Pixel(0, 54, 0);
+            var green = new Pixel(77, 203, 77);
+            var blackish = new Pixel(0, 53, 0);
 
             var expected = new[]
             {
-                green, blackish,
-                blackish, green
+                blackish, green,
+                green, blackish
             };
             
             var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "images", "jpg", "2by2checkerboard-green.jpg");

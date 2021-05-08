@@ -24,7 +24,7 @@
         /// </summary>
         public byte NumberOfComponents { get; }
 
-        public FrameComponentSpecificationParameters[] FrameComponentSpecifications { get; }
+        public FrameComponentSpecificationParameters[] Components { get; }
 
         public int McusPerX { get; }
 
@@ -43,7 +43,7 @@
             short imageHeight,
             short imageWidth,
             byte numberOfComponents,
-            FrameComponentSpecificationParameters[] frameComponentSpecifications,
+            FrameComponentSpecificationParameters[] components,
             int mcusPerX,
             int mcusPerY,
             int maxHorizontalSamplingFactor,
@@ -55,7 +55,7 @@
             ImageHeight = imageHeight;
             ImageWidth = imageWidth;
             NumberOfComponents = numberOfComponents;
-            FrameComponentSpecifications = frameComponentSpecifications;
+            Components = components;
             McusPerX = mcusPerX;
             McusPerY = mcusPerY;
             MaxHorizontalSamplingFactor = maxHorizontalSamplingFactor;
@@ -107,14 +107,17 @@
                                                     $" should have read {length} bytes at offset {offset}..");
             }
 
+            // When a frame contains more than 1 component (?).
+
+
             var adjustX = imageWidth % 8 == 0 ? 0 : 1;
             var adjustY = imageHeight % 8 == 0 ? 0 : 1;
 
             maxVerticalFactor = maxVerticalFactor > 0 ? maxVerticalFactor : 1;
             maxHorizontalFactor = maxHorizontalFactor > 0 ? maxHorizontalFactor : 1;
 
-            var mcusPerX = (imageWidth / 8 + adjustX) / maxVerticalFactor;
-            var mcusPerY = (imageHeight / 8 + adjustY) / maxHorizontalFactor;
+            var mcusPerX = (imageWidth / 8 + adjustX) / (double)maxHorizontalFactor;
+            var mcusPerY = (imageHeight / 8 + adjustY) / (double)maxVerticalFactor;
 
             return new Frame(
                 frameType,
@@ -124,8 +127,8 @@
                 imageWidth,
                 numberOfComponents,
                 frameComponents,
-                mcusPerX,
-                mcusPerY,
+                (byte)Math.Ceiling(mcusPerX),
+                (byte)Math.Ceiling(mcusPerY),
                 maxHorizontalFactor,
                 maxVerticalFactor);
         }

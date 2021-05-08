@@ -2,40 +2,61 @@
 {
     using System.IO;
 
-    internal class JfifSegment
+    /// <summary>
+    /// The JFIF format information in the APP0 section.
+    /// </summary>
+    public class Jfif
     {
+        /// <summary>
+        /// The major version.
+        /// </summary>
         public byte MajorVersion { get; }
         
+        /// <summary>
+        /// The minor version.
+        /// </summary>
         public byte MinorVersion { get; }
 
-        public PixelUnitDensity PixelUnitDensity { get; }
+        /// <summary>
+        /// The units for horizontal/vertical pixel densities.
+        /// </summary>
+        public PixelDensityUnit PixelDensityUnit { get; }
 
+        /// <summary>
+        /// The horizontal pixel density in <see cref="PixelDensityUnit"/>s.
+        /// </summary>
         public short HorizontalPixelDensity { get; }
 
+        /// <summary>
+        /// The vertical pixel density in <see cref="PixelDensityUnit"/>s.
+        /// </summary>
         public short VerticalPixelDensity { get; }
 
+        /// <summary>
+        /// The raw bytes of the thumbnail if present (R, G, B).
+        /// </summary>
         public byte[] Thumbnail { get; }
 
-        public JfifSegment(
+        internal Jfif(
             byte majorVersion,
             byte minorVersion,
-            PixelUnitDensity pixelUnitDensity,
+            PixelDensityUnit pixelDensityUnit,
             short horizontalPixelDensity,
             short verticalPixelDensity,
             byte[] thumbnail)
         {
             MajorVersion = majorVersion;
             MinorVersion = minorVersion;
-            PixelUnitDensity = pixelUnitDensity;
+            PixelDensityUnit = pixelDensityUnit;
             HorizontalPixelDensity = horizontalPixelDensity;
             VerticalPixelDensity = verticalPixelDensity;
             Thumbnail = thumbnail;
         }
 
-        public static JfifSegment ReadFromApp0(Stream stream)
+        internal static Jfif ReadFromApp0(Stream stream)
         {
             var pos = stream.Position;
-            var length = stream.ReadShort();
+            stream.ReadShort();
             var b1 = stream.ReadByteActual();
             if (b1 != 'J')
             {
@@ -86,17 +107,10 @@
             var thumbnailRgb = new byte[thumbnailLength];
                 stream.Read(thumbnailRgb, 0, thumbnailRgb.Length);
 
-            return new JfifSegment(major, minor, (Jpgs.PixelUnitDensity)pixelDensity,
+            return new Jfif(major, minor, (PixelDensityUnit)pixelDensity,
                 horizontalPixelDensity,
                 verticalPixelDensity,
                 thumbnailRgb);
         }
-    }
-
-    internal enum PixelUnitDensity : byte
-    {
-        None = 0,
-        PixelsPerInch = 1,
-        PixelsPerCm = 2
     }
 }

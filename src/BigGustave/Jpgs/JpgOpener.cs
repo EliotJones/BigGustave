@@ -26,12 +26,13 @@
                 throw new ArgumentException("The provided stream did not start with the JPEG header.");
             }
 
-            var jfif = default(JfifSegment);
-            var comments = new List<CommentSection>();
+            var jfif = default(Jfif);
+            var comments = new List<Comment>();
             var quantizationTables = new Dictionary<int, QuantizationTableSpecification>();
             var dcHuffmanTables = new Dictionary<int, HuffmanTable>();
             var acHuffmanTables = new Dictionary<int, HuffmanTable>();
 
+            var rgbData = new byte[0];
             var frames = new List<Frame>();
 
             var marker = stream.ReadSegmentMarker();
@@ -45,11 +46,11 @@
                 switch (markerType)
                 {
                     case JpgMarkers.ApplicationSpecific0:
-                        jfif = JfifSegment.ReadFromApp0(stream);
+                        jfif = Jfif.ReadFromApp0(stream);
                         break;
                     case JpgMarkers.Comment:
                         skipData = false;
-                        var comment = CommentSection.ReadFromMarker(stream);
+                        var comment = Comment.ReadFromMarker(stream);
                         comments.Add(comment);
                         break;
                     case JpgMarkers.DefineQuantizationTable:
@@ -95,12 +96,17 @@
 
                         var frameForScan = frames[frames.Count - 1];
 
-                        var dataHolder = new byte[3 * frameForScan.ImageHeight * frameForScan.ImageWidth];
+                        rgbData = new byte[3 * frameForScan.ImageHeight * frameForScan.ImageWidth];
 
                         frameForScan.Scans.Add(scanSingle);
 
+                        if (frameForScan.FrameType != FrameType.BaselineHuffman)
+                        {
+                            throw new NotSupportedException($"No support for frame type: {frameForScan.FrameType}.");
+                        }
+
                         ProcessScan(
-                            dataHolder,
+                            rgbData,
                             frameForScan,
                             scanSingle,
                             quantizationTables,
@@ -126,8 +132,6 @@
                         frames.Add(frame);
 
                         break;
-                    default:
-                        break;
                 }
 
                 marker = stream.ReadSegmentMarker(skipData, $"Expected next marker after reading section of type: {markerType}.");
@@ -135,7 +139,14 @@
                 markerType = (JpgMarkers)marker;
             }
 
-            throw new NotImplementedException();
+            if (frames.Count == 0 || frames[frames.Count - 1].Scans.Count == 0)
+            {
+                throw new InvalidOperationException($"No image data found in the provided JPG.");
+            }
+
+            var result = frames[frames.Count - 1];
+
+            return new Jpg(result.ImageWidth, result.ImageHeight, rgbData, jfif, comments);
         }
 
         private static void ProcessScan(
@@ -151,8 +162,6 @@
             // Y, Cb, Cr
             var oldDcCoefficients = new int[frame.NumberOfComponents];
 
-            var png = PngBuilder.Create(frame.ImageWidth, frame.ImageHeight, false);
-
             var samplesByComponent = new List<List<double[]>>();
 
             var indexForResult = 0;
@@ -162,10 +171,10 @@
                 {
                     samplesByComponent.Clear();
 
-                    for (var componentIndex = 0; componentIndex < frame.FrameComponentSpecifications.Length; componentIndex++)
+                    for (var componentIndex = 0; componentIndex < frame.Components.Length; componentIndex++)
                     {
                         var componentSamples = new List<double[]>();
-                        var component = frame.FrameComponentSpecifications[componentIndex];
+                        var component = frame.Components[componentIndex];
 
                         var qt = quantizationTables[component.DestinationQuantizationTableSelector];
                         var index = componentIndex > 0 ? 1 : 0;
@@ -174,7 +183,7 @@
                         {
                             for (var x = 0; x < component.VerticalSamplingFactor; x++)
                             {
-                                var (newDcCoeff, dcu) = DecodeDcu(
+                                var (newDcCoeff, dataUnit) = DecodeDataUnit(
                                     str,
                                     index,
                                     qt,
@@ -184,7 +193,7 @@
 
                                 oldDcCoefficients[componentIndex] = newDcCoeff;
 
-                                componentSamples.Add(dcu);
+                                componentSamples.Add(dataUnit);
                             }
                         }
 
@@ -205,14 +214,6 @@
                                 break;
                             }
 
-                            var outX = (col * 8) + x;
-                            var outY = (row * 8) + y;
-
-                            if (outY == 55 && outX == 276)
-                            {
-                                
-                            }
-
                             var flatIndex = (y * 8) + x;
                             var (r, g, b) = ToRgb(samplesByComponent[0][0][flatIndex],
                                 samplesByComponent[1][0][flatIndex],
@@ -220,22 +221,13 @@
                             resultHolder[indexForResult++] = r;
                             resultHolder[indexForResult++] = g;
                             resultHolder[indexForResult++] = b;
-
-                            png.SetPixel(r, g, b, (col * 8) + x, (row * 8) + y);
                         }
                     }
-
-                    //oldDcCoefficients[0] = newYDcCoefficient;
-                    //oldDcCoefficients[1] = newCbDcCoefficient;
-                    //oldDcCoefficients[2] = newCrDcCoefficient;
                 }
             }
-
-            var img = png.Save();
-            File.WriteAllBytes(@"C:\temp\bgjpgout.jpg", img);
         }
 
-        private static (int dcCoefficient, double[] data) DecodeDcu(BitStream stream,
+        private static (int dcCoefficient, double[] data) DecodeDataUnit(BitStream stream,
             int index,
             QuantizationTableSpecification quantization,
             int previousDcCoefficient,
@@ -378,28 +370,6 @@
 
             return bytes[0] == MarkerStart
                    && bytes[1] == StartOfImage;
-        }
-    }
-
-    internal static class InverseDiscreteCosineTransformer
-    {
-        private static readonly byte[] ZigZagPattern = new byte[]
-        {
-            0,  1,  8, 16,  9,  2,  3, 10,
-            17, 24, 32, 25, 18, 11,  4,  5,
-            12, 19, 26, 33, 40, 48, 41, 34,
-            27, 20, 13,  6,  7, 14, 21, 28,
-            35, 42, 49, 56, 57, 50, 43, 36,
-            29, 22, 15, 23, 30, 37, 44, 51,
-            58, 59, 52, 45, 38, 31, 39, 46,
-            53, 60, 61, 54, 47, 55, 62, 63
-        };
-
-        public static byte[] Reverse()
-        {
-            var result = new byte[64];
-
-            return result;
         }
     }
 }

@@ -7,18 +7,8 @@
     /// <summary>
     /// A comment in a JPG file.
     /// </summary>
-    internal class CommentSection
+    public class Comment
     {
-        /// <summary>
-        /// Offset from the start of the file to this table's marker.
-        /// </summary>
-        public long Offset { get; }
-
-        /// <summary>
-        /// Length of the comment in bytes.
-        /// </summary>
-        public short Length { get; }
-
         /// <summary>
         /// The bytes of the comment.
         /// </summary>
@@ -29,15 +19,13 @@
         /// </summary>
         public string Text { get; }
 
-        private CommentSection(long offset, short length, byte[] bytes)
+        private Comment(byte[] bytes)
         {
-            Offset = offset;
-            Length = length;
             Bytes = bytes;
             Text = Encoding.ASCII.GetString(bytes);
         }
 
-        public static CommentSection ReadFromMarker(Stream stream)
+        internal static Comment ReadFromMarker(Stream stream)
         {
             var offset = stream.Position;
             var length = stream.ReadShort();
@@ -51,7 +39,7 @@
                 throw new InvalidOperationException($"Failed to read comment of length {length} at offset {offset}. Read {read} bytes instead.");
             }
 
-            return new CommentSection(offset, length, bytes);
+            return new Comment(bytes);
         }
     }
 }
