@@ -92,7 +92,11 @@
                             switch (header.Name)
                             {
                                 case "tRNS":
-                                    palette.SetAlphaValues(bytes);
+                                    // Add transparency to palette, if the PLTE chunk has been read.
+                                    if (palette != null)
+                                    {
+                                        palette.SetAlphaValues(bytes);
+                                    }
                                     break;
                             }
                         }
