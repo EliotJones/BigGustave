@@ -87,6 +87,19 @@
                                     throw new NotSupportedException($"Encountered critical header {header} which was not recognised.");
                             }
                         }
+                        else
+                        {
+                            switch (header.Name)
+                            {
+                                case "tRNS":
+                                    // Add transparency to palette, if the PLTE chunk has been read.
+                                    if (palette != null)
+                                    {
+                                        palette.SetAlphaValues(bytes);
+                                    }
+                                    break;
+                            }
+                        }
 
                         read = stream.Read(crc, 0, crc.Length);
                         if (read != 4)
