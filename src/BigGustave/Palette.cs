@@ -2,6 +2,8 @@
 {
     internal class Palette
     {
+        public bool HasAlphaValues { get; private set; }
+
         public byte[] Data { get; }
 
         /// <summary>
@@ -10,8 +12,8 @@
         public Palette(byte[] data)
         {
             Data = new byte[data.Length * 4 / 3];
-            int dataIndex = 0;
-            for (int i = 0; i < data.Length; i += 3)
+            var dataIndex = 0;
+            for (var i = 0; i < data.Length; i += 3)
             {
                 Data[dataIndex++] = data[i];
                 Data[dataIndex++] = data[i + 1];
@@ -25,7 +27,9 @@
         /// </summary>
         public void SetAlphaValues(byte[] bytes)
         {
-            for (int i = 0; i < bytes.Length; i++)
+            HasAlphaValues = true;
+
+            for (var i = 0; i < bytes.Length; i++)
             {
                 Data[i * 4 + 3] = bytes[i];
             }

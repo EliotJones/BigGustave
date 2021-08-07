@@ -134,7 +134,7 @@
 
                 bytesOut = Decoder.Decode(bytesOut, imageHeader, bytesPerPixel, samplesPerPixel);
 
-                return new Png(imageHeader, new RawPngData(bytesOut, bytesPerPixel, palette, imageHeader));
+                return new Png(imageHeader, new RawPngData(bytesOut, bytesPerPixel, palette, imageHeader), palette?.HasAlphaValues ?? false);
             }
         }
 
