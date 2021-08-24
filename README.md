@@ -71,5 +71,5 @@ To create a PNG use:
 
 You can also load a PNG into a builder which will copy all the pixel values into the builder for easy editing:
 
-    var png = Png.Create(@"C:\files\my.png");
+    var png = Png.Open(@"C:\files\my.png");
     var builder = PngBuilder.FromPng(png);
