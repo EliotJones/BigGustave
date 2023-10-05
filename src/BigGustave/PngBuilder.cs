@@ -287,7 +287,7 @@
             if (!hasTooManyColorsForPalette && !hasAlphaChannel)
             {
                 var paletteColors = colorCounts.OrderByDescending(x => x.Value).Select(x => x.Key).ToList();
-                bitDepth = paletteColors.Count >= 128 ? 8 : 4;
+                bitDepth = paletteColors.Count > 16 ? 8 : 4;
                 var samplesPerByte = bitDepth == 8 ? 1 : 2;
                 var applyShift = samplesPerByte == 2;
 
