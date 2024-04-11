@@ -7,7 +7,7 @@
 
     internal static class PngOpener
     {
-        public static Png Open(Stream stream, IChunkVisitor chunkVisitor = null) => Open(stream, new PngOpenerSettings
+        public static Png Open(Stream stream, IChunkVisitor? chunkVisitor = null) => Open(stream, new PngOpenerSettings
         {
             ChunkVisitor = chunkVisitor
         });
@@ -15,28 +15,22 @@
         public static Png Open(Stream stream, PngOpenerSettings settings)
         {
             if (stream == null)
-            {
                 throw new ArgumentNullException(nameof(stream));
-            }
 
             if (!stream.CanRead)
-            {
                 throw new ArgumentException($"The provided stream of type {stream.GetType().FullName} was not readable.");
-            }
 
             var validHeader = HasValidHeader(stream);
 
             if (!validHeader.IsValid)
-            {
                 throw new ArgumentException($"The provided stream did not start with the PNG header. Got {validHeader}.");
-            }
 
             var crc = new byte[4];
             var imageHeader = ReadImageHeader(stream, crc);
 
             var hasEncounteredImageEnd = false;
 
-            Palette palette = null;
+            Palette? palette = null;
 
             using (var output = new MemoryStream())
             {
