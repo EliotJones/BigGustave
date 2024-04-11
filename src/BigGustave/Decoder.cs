@@ -41,7 +41,8 @@
                     }
                 case InterlaceMethod.Adam7:
                     {
-                        var pixelsPerRow = header.Width * bytesPerPixel;
+                        var byteHack = bytesPerPixel == 1 ? 1 : 0; // TODO: Further investigation required.
+                        var pixelsPerRow = header.Width * bytesPerPixel + byteHack; // Add an extra byte per line.
                         var newBytes = new byte[header.Height * pixelsPerRow];
                         var i = 0;
                         var previousStartRowByteAbsolute = -1;
@@ -71,7 +72,7 @@
                                         i++;
                                     }
 
-                                    var start = pixelsPerRow * pixelIndex.y + pixelIndex.x * bytesPerPixel;
+                                    var start = byteHack + pixelsPerRow * pixelIndex.y + pixelIndex.x * bytesPerPixel; // Add 1 byte extra offset.
                                     Array.ConstrainedCopy(decompressedData, rowStartByte + j * bytesPerPixel, newBytes, start, bytesPerPixel);
                                 }
 
@@ -93,6 +94,7 @@
                 case ColorType.None:
                     return 1;
                 case ColorType.PaletteUsed:
+                case ColorType.PaletteUsed | ColorType.ColorUsed:
                     return 1;
                 case ColorType.ColorUsed:
                     return 3;
