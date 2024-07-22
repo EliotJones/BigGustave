@@ -2,13 +2,14 @@
 
 ![NuGet](https://img.shields.io/nuget/dt/BigGustave?style=flat-square)
 
-Open, read and create PNG images in fully managed C#.
+#### Open, read and create PNG images in fully managed C#.
 
-## Usage
+## Usage - **Reading**
 
-To open a PNG image from file and get some pixel values:
+To open a PNG image from a file and get some pixel values:
 
-    using (var stream = File.OpenRead(@"C:\my\file\path\file.png"))
+```csharp
+using (var stream = File.OpenRead(@"C:\my\file\path\file.png"))
     {
         Png image = Png.Open(stream);
 
@@ -25,51 +26,70 @@ To open a PNG image from file and get some pixel values:
         Console.WriteLine(pixelRedAverage / 2.0);
 
     }
+```
 
-The PNG object has methods to inspect the header and get the pixel values. The header has properties for:
+#### The PNG object has multiple methods to inspect the header and get the pixel values. The header has properties for:
+------
 
-    png.Header.Width
-    png.Header.Height
-    png.Header.BitDepth
-    png.Header.ColorType
-    png.Header.CompressionMethod
-    png.Header.FilterMethod
-    png.Header.InterlaceMethod
+```csharp
+png.Header.Width
+png.Header.Height
+png.Header.BitDepth
+png.Header.ColorType
+png.Header.CompressionMethod
+png.Header.FilterMethod
+png.Header.InterlaceMethod
+```
+------
 
-The PNG also has width and height as convenience properties from the header information:
+**The PNG also has `Width`and `Height` as convenience properties from the header information:**
 
-    png.Width == png.Header.Width
-    png.Height == png.Header.Height
+```csharp
+png.Width == png.Header.Width
+png.Height == png.Header.Height
+```
 
-And a property that indicates if the image uses transparency:
+**And a property that indicates whether the image uses transparency:**
 
-    png.HasAlphaChannel
+```csharp
+png.HasAlphaChannel
+```
 
-To get a pixel use:
+#### To get a pixel use:
 
-    Pixel pixel = png.GetPixel(0, 7);
+```csharp
+Pixel pixel = png.GetPixel(0, 7);
+```
 
-Where the first argument is x (column) and the second is y (row). The `Pixel` is used for all image types, e.g. Grayscale, Colour, with/without transparency.
+Where the first argument is x (column) and the second is y (row). The `Pixel` is used for all types of images (e.g. Grayscale, Color, with / without transparency)
 
-## Creation
+-----
 
-To create a PNG use:
+## Usage - **Creating**
 
-    var builder = PngBuilder.Create(2, 2, false);
+Generating a PNG image:
 
-    var red = new Pixel(255, 0, 0);
 
-    builder.SetPixel(red, 0, 0);
-    builder.SetPixel(255, 120, 16, 1, 1);
+```csharp
+var builder = PngBuilder.Create(2, 2, false);
 
-    using (var memory = new MemoryStream())
+var red = new Pixel(255, 0, 0);
+
+builder.SetPixel(red, 0, 0);
+builder.SetPixel(255, 120, 16, 1, 1);
+
+using (var memory = new MemoryStream())
     {
         builder.Save(memory);
 
         return memory.ToArray();
     }
+```
+-------
 
-You can also load a PNG into a builder which will copy all the pixel values into the builder for easy editing:
+#### **You can load a PNG image into a builder which will copy all the pixels values into the builder for easier editing:**
 
-    var png = Png.Open(@"C:\files\my.png");
-    var builder = PngBuilder.FromPng(png);
+```csharp
+var png = Png.Open(@"C:\files\my.png");
+var builder = PngBuilder.FromPng(png);
+```
