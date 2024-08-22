@@ -1,5 +1,6 @@
 ﻿namespace BigGustave
 {
+    using System;
     using System.Collections.Generic;
 
     /// <summary>
@@ -38,14 +39,14 @@
         /// </summary>
         public static uint Calculate(byte[] data)
         {
-            var crc32 = uint.MaxValue;
+            var crc32 = UInt32.MaxValue;
             for (var i = 0; i < data.Length; i++)
             {
                 var index = (crc32 ^ data[i]) & 0xFF;
                 crc32 = (crc32 >> 8) ^ Lookup[index];
             }
 
-            return crc32 ^ uint.MaxValue;
+            return crc32 ^ UInt32.MaxValue;
         }
 
         /// <summary>
@@ -53,14 +54,14 @@
         /// </summary>
         public static uint Calculate(List<byte> data)
         {
-            var crc32 = uint.MaxValue;
+            var crc32 = UInt32.MaxValue;
             for (var i = 0; i < data.Count; i++)
             {
                 var index = (crc32 ^ data[i]) & 0xFF;
                 crc32 = (crc32 >> 8) ^ Lookup[index];
             }
 
-            return crc32 ^ uint.MaxValue;
+            return crc32 ^ UInt32.MaxValue;
         }
 
         /// <summary>
@@ -68,7 +69,7 @@
         /// </summary>
         public static uint Calculate(byte[] data, byte[] data2)
         {
-            var crc32 = uint.MaxValue;
+            var crc32 = UInt32.MaxValue;
             for (var i = 0; i < data.Length; i++)
             {
                 var index = (crc32 ^ data[i]) & 0xFF;
@@ -81,7 +82,7 @@
                 crc32 = (crc32 >> 8) ^ Lookup[index];
             }
 
-            return crc32 ^ uint.MaxValue;
+            return crc32 ^ UInt32.MaxValue;
         }
     }
 }

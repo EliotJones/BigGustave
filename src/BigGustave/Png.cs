@@ -39,11 +39,28 @@
         }
 
         /// <summary>
+        /// Get the palette index at the given column and row (x, y).
+        /// </summary>
+        /// <remarks>
+        /// Pixel values are generated on demand from the underlying data to prevent holding many items in memory at once, so consumers
+        /// should cache values if they're going to be looped over many times.
+        /// </remarks>
+        /// <param name="x">The x coordinate (column).</param>
+        /// <param name="y">The y coordinate (row).</param>
+        /// <returns>The palette index of the pixel at the coordinate.</returns>
+        public int GetPixelIndex(int x, int y) => data.GetPixelIndex(x, y);
+
+        /// <summary>
+        /// Gets the color palette.
+        /// </summary>
+        public Palette? GetPalette() => data.GetPalette();
+
+        /// <summary>
         /// Get the pixel at the given column and row (x, y).
         /// </summary>
         /// <remarks>
         /// Pixel values are generated on demand from the underlying data to prevent holding many items in memory at once, so consumers
-        /// should cache values if they're going to be looped over many time.
+        /// should cache values if they're going to be looped over many times.
         /// </remarks>
         /// <param name="x">The x coordinate (column).</param>
         /// <param name="y">The y coordinate (row).</param>
@@ -56,7 +73,7 @@
         /// <param name="stream">The stream containing PNG data to be read.</param>
         /// <param name="chunkVisitor">Optional: A visitor which is called whenever a chunk is read by the library.</param>
         /// <returns>The <see cref="Png"/> data from the stream.</returns>
-        public static Png Open(Stream stream, IChunkVisitor chunkVisitor = null)
+        public static Png Open(Stream stream, IChunkVisitor? chunkVisitor = null)
             => PngOpener.Open(stream, chunkVisitor);
 
         /// <summary>
@@ -74,12 +91,10 @@
         /// <param name="bytes">The bytes of the PNG data to be read.</param>
         /// <param name="chunkVisitor">Optional: A visitor which is called whenever a chunk is read by the library.</param>
         /// <returns>The <see cref="Png"/> data from the bytes.</returns>
-        public static Png Open(byte[] bytes, IChunkVisitor chunkVisitor = null)
+        public static Png Open(byte[] bytes, IChunkVisitor? chunkVisitor = null)
         {
-            using (var memoryStream = new MemoryStream(bytes))
-            {
-                return PngOpener.Open(memoryStream, chunkVisitor);
-            }
+            using var memoryStream = new MemoryStream(bytes);
+            return PngOpener.Open(memoryStream, chunkVisitor);
         }
 
         /// <summary>
@@ -90,10 +105,8 @@
         /// <returns>The <see cref="Png"/> data from the bytes.</returns>
         public static Png Open(byte[] bytes, PngOpenerSettings settings)
         {
-            using (var memoryStream = new MemoryStream(bytes))
-            {
-                return PngOpener.Open(memoryStream, settings);
-            }
+            using var memoryStream = new MemoryStream(bytes);
+            return PngOpener.Open(memoryStream, settings);
         }
 
         /// <summary>
@@ -103,12 +116,10 @@
         /// <param name="chunkVisitor">Optional: A visitor which is called whenever a chunk is read by the library.</param>
         /// <remarks>This will open the file to obtain a <see cref="FileStream"/> so will lock the file during reading.</remarks>
         /// <returns>The <see cref="Png"/> data from the file.</returns>
-        public static Png Open(string filePath, IChunkVisitor chunkVisitor = null)
+        public static Png Open(string filePath, IChunkVisitor? chunkVisitor = null)
         {
-            using (var fileStream = File.OpenRead(filePath))
-            {
-                return Open(fileStream, chunkVisitor);
-            }
+            using var fileStream = File.OpenRead(filePath);
+            return Open(fileStream, chunkVisitor);
         }
 
         /// <summary>
@@ -120,10 +131,8 @@
         /// <returns>The <see cref="Png"/> data from the file.</returns>
         public static Png Open(string filePath, PngOpenerSettings settings)
         {
-            using (var fileStream = File.OpenRead(filePath))
-            {
-                return Open(fileStream, settings);
-            }
+            using var fileStream = File.OpenRead(filePath);
+            return Open(fileStream, settings);
         }
     }
 }

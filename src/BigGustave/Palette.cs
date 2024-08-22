@@ -1,9 +1,18 @@
 ﻿namespace BigGustave
 {
-    internal class Palette
+    /// <summary>
+    /// The Palette class.
+    /// </summary>
+    public class Palette
     {
+        /// <summary>
+        /// True if palette has alpha values.
+        /// </summary>
         public bool HasAlphaValues { get; private set; }
 
+        /// <summary>
+        /// The palette data.
+        /// </summary>
         public byte[] Data { get; }
 
         /// <summary>
@@ -35,6 +44,9 @@
             }
         }
 
+        /// <summary>
+        /// Gets the palette entry for a specific index.
+        /// </summary>
         public Pixel GetPixel(int index)
         {
             var start = index * 4;

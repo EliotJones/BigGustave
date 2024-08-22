@@ -201,7 +201,7 @@
         /// </summary>
         /// <param name="keyword">
         /// A keyword identifying the text data between 1-79 characters in length.
-        /// Must not start with, end with or contain consecutive whitespace characters.
+        /// Must not start with, end with, or contain consecutive whitespace characters.
         /// Only characters in the range 32 - 126 and 161 - 255 are permitted.
         /// </param>
         /// <param name="text">
@@ -264,23 +264,21 @@
         /// <summary>
         /// Get the bytes of the PNG file for this builder.
         /// </summary>
-        public byte[] Save(SaveOptions options = null)
+        public byte[] Save(SaveOptions? options = null)
         {
-            using (var memoryStream = new MemoryStream())
-            {
-                Save(memoryStream, options);
-                return memoryStream.ToArray();
-            }
+            using var memoryStream = new MemoryStream();
+            Save(memoryStream, options);
+            return memoryStream.ToArray();
         }
 
         /// <summary>
         /// Write the PNG file bytes to the provided stream.
         /// </summary>
-        public void Save(Stream outputStream, SaveOptions options = null)
+        public void Save(Stream outputStream, SaveOptions? options = null)
         {
             options = options ?? new SaveOptions();
 
-            byte[] palette = null;
+            byte[]? palette = null;
             var dataLength = rawData.Length;
             var bitDepth = 8;
 
@@ -469,7 +467,7 @@
         }
 
         /// <summary>
-        /// Attempt to improve compressability of the raw data by using adaptive filtering.
+        /// Attempt to improve compressibility of the raw data by using adaptive filtering.
         /// </summary>
         private void AttemptCompressionOfRawData(byte[] rawData, SaveOptions options)
         {
@@ -495,7 +493,7 @@
                     noneFilterSum += scanData[i];
                 }
 
-                var leftFilterSum = 0;
+                //var leftFilterSum = 0;
                 for (int i = 0; i < scanData.Length; i++)
                 {
 

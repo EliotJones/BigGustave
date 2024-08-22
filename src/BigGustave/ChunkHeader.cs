@@ -25,18 +25,18 @@
         /// <summary>
         /// Whether the chunk is critical (must be read by all readers) or ancillary (may be ignored).
         /// </summary>
-        public bool IsCritical => char.IsUpper(Name[0]);
+        public bool IsCritical => Char.IsUpper(Name[0]);
 
         /// <summary>
         /// A public chunk is one that is defined in the International Standard or is registered in the list of public chunk types maintained by the Registration Authority. 
         /// Applications can also define private (unregistered) chunk types for their own purposes.
         /// </summary>
-        public bool IsPublic => char.IsUpper(Name[1]);
+        public bool IsPublic => Char.IsUpper(Name[1]);
 
         /// <summary>
         /// Whether the (if unrecognized) chunk is safe to copy.
         /// </summary>
-        public bool IsSafeToCopy => char.IsUpper(Name[3]);
+        public bool IsSafeToCopy => Char.IsUpper(Name[3]);
 
         /// <summary>
         /// Create a new <see cref="ChunkHeader"/>.

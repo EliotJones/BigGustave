@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <LangVersion>7.2</LangVersion>
+    <LangVersion>8.0</LangVersion>
     <Description>Open, read and create PNG images.</Description>
     <RepositoryUrl>https://github.com/EliotJones/BigGustave</RepositoryUrl>
     <PackageIconUrl>https://raw.githubusercontent.com/UglyToad/DataTable/master/uglytoadsmall.png</PackageIconUrl>
@@ -10,6 +10,7 @@
     <PackageLicenseExpression>Unlicense</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/EliotJones/BigGustave</PackageProjectUrl>
     <Version>1.0.6</Version>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
